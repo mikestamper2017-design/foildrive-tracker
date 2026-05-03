@@ -67,6 +67,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (toggleWaveOnly) {
         toggleWaveOnly.addEventListener('change', function () {
             if (map) {
+                // Clear all layers
                 map.eachLayer(function (layer) {
                     if (layer !== map._layers[Object.keys(map._layers)[0]]) {
                         map.removeLayer(layer);
@@ -74,31 +75,26 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
 
                 if (this.checked) {
+                    // Show ONLY wave run coordinates - No full session grey lines or assisted runs
                     if (waveTrackCoords.length > 0) {
                         L.polyline(waveTrackCoords, {
-                            color: '#A0A0A0',
+                            color: '#000000',
                             weight: 3,
-                            opacity: 0.5
+                            opacity: 0.8
                         }).addTo(map);
                     }
                     if (longestTrackCoords.length > 0) {
                         L.polyline(longestTrackCoords, {
-                            color: '#000000',
-                            weight: 5,
-                            opacity: 0.9
-                        }).addTo(map);
-                    }
-                    if (fastestTrackCoords.length > 0) {
-                        L.polyline(fastestTrackCoords, {
                             color: '#D4AF37',
-                            weight: 5,
+                            weight: 4,
                             opacity: 0.9
                         }).addTo(map);
                     }
-                    if (longestTrackCoords.length > 0) {
-                        map.fitBounds(L.latLngBounds(longestTrackCoords));
+                    if (waveTrackCoords.length > 0) {
+                        map.fitBounds(L.latLngBounds(waveTrackCoords));
                     }
                 } else {
+                    // Restore both full track background and wave runs
                     L.polyline(fullTrackCoords, {
                         color: '#A0A0A0',
                         weight: 2,
@@ -173,14 +169,12 @@ document.addEventListener('DOMContentLoaded', function () {
             let speedNodes = xmlDoc.getElementsByTagName("Speed");
             let timeNodes = xmlDoc.getElementsByTagName("Time");
             
-            // Filter points based on unassisted valid speed (between 11 km/h and max speed)
             for (let i = 0; i < nodes.length; i++) {
                 let latNode = nodes[i].getElementsByTagName("LatitudeDegrees")[0];
                 let lonNode = nodes[i].getElementsByTagName("LongitudeDegrees")[0];
                 if (latNode && lonNode) {
                     let spd = speedNodes[i] ? parseFloat(speedNodes[i].textContent) * 3.6 : 19.5;
                     
-                    // Filter out non-flight speeds (like walking or resting on water)
                     if (spd > 11.0) {
                         lats.push(parseFloat(latNode.textContent));
                         lons.push(parseFloat(lonNode.textContent));
@@ -194,9 +188,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // Calculate dynamic values
         let totalTimeMinutes = Math.max(15, Math.ceil((times[times.length - 1] - times[0]) / 60000));
-        let motorMinutes = Math.min(28, Math.floor(totalTimeMinutes * 0.45)); // Adjusted for more riding time
+        let motorMinutes = Math.min(28, Math.floor(totalTimeMinutes * 0.45));
         let maxSpeedKmh = (Math.max(...speeds) * 1.05).toFixed(1);
         
         let waveCount = Math.floor(lats.length / 500);
@@ -219,7 +212,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function calculateDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371e3; // Earth radius in meters
+        const R = 6371e3;
         const φ1 = lat1 * Math.PI/180;
         const φ2 = lat2 * Math.PI/180;
         const Δφ = (lat2-lat1) * Math.PI/180;
