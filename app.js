@@ -251,6 +251,22 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
+        // Apply a Low-Pass Filter (Window Smoothing) to the speeds array to prevent jitter spikes
+        if (speeds.length > 5) {
+            let smoothedSpeeds = [];
+            for (let i = 0; i < speeds.length; i++) {
+                let windowSum = 0;
+                let windowCount = 0;
+                // Average with 2 adjacent points on either side
+                for (let j = Math.max(0, i - 2); j <= Math.min(speeds.length - 1, i + 2); j++) {
+                    windowSum += speeds[j];
+                    windowCount++;
+                }
+                smoothedSpeeds.push(windowSum / windowCount);
+            }
+            speeds = smoothedSpeeds;
+        }
+
         let firstValidIndex = 0;
         for (let i = 0; i < speeds.length; i++) {
             if (speeds[i] > 11.0) {
@@ -279,6 +295,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         let totalTimeMinutes = Math.max(12, Math.ceil((times[times.length - 1] - times[0]) / 60000));
         let motorMinutes = Math.min(22, Math.floor(totalTimeMinutes * 0.38));
+        
+        // Calculate max speed from the newly smoothed speed array
         let maxSpeedKmh = (Math.max(...speeds, 22.5) * 1.05).toFixed(1);
         
         let waveCount = Math.floor(lats.length / 500);
@@ -347,7 +365,6 @@ document.addEventListener('DOMContentLoaded', function () {
     function TrackCoordsCalculation(lats, lons) {
         fullTrackCoords = lats.map((v, i) => [lats[i], lons[i]]);
         
-        // 1. Calculate the Cumulative Total Distance for the whole session
         let fullDistanceMeters = 0;
         for (let i = 1; i < fullTrackCoords.length; i++) {
             fullDistanceMeters += calculateDistance(
@@ -356,7 +373,6 @@ document.addEventListener('DOMContentLoaded', function () {
             );
         }
 
-        // 2. Filter downwind runs
         waveTrackCoords = fullTrackCoords.filter((coord, index) => {
             if (index > 0) {
                 let prev = fullTrackCoords[index - 1];
@@ -410,7 +426,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         longestTrackCoords = bestRun;
 
-        // Set Values
         document.getElementById('totalDistance').textContent = `${(fullDistanceMeters / 1000).toFixed(2)} km`;
         document.getElementById('longestWave').textContent = `${Math.round(longestRunMeters)} m`;
 
@@ -471,7 +486,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function updateDashboard(flightTime, motorMinutes, maxSpeed, waveCount, longestWave, fastestWave) {
         document.getElementById('flightTime').textContent = `${flightTime} min`;
         document.getElementById('motorTime').textContent = `${motorMinutes} min`;
-        document.getElementById('maxSpeed').textContent = `${maxSpeed} km/h`;
+        document.getElementById('maxSpeed').textContent = `${obj?.maxSpeed || maxSpeed} km/h`; // Fallback to parameter
         document.getElementById('waveCount').textContent = waveCount;
         document.getElementById('longestWave').textContent = `${longestWave} m`;
         document.getElementById('fastestWave').textContent = `${fastestWave} km/h`;
