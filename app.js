@@ -81,6 +81,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             opacity: 0.5
                         }).addTo(map);
                     }
+                    // Highlight longest and fastest within the wave view
                     if (longestTrackCoords.length > 0) {
                         L.polyline(longestTrackCoords, {
                             color: '#000000',
@@ -95,10 +96,11 @@ document.addEventListener('DOMContentLoaded', function () {
                             opacity: 0.9
                         }).addTo(map);
                     }
-                    if (longestTrackCoords.length > 0) {
-                        map.fitBounds(L.latLngBounds(longestTrackCoords));
+                    if (waveTrackCoords.length > 0) {
+                        map.fitBounds(L.latLngBounds(waveTrackCoords));
                     }
                 } else {
+                    // Draw Full Track
                     L.polyline(fullTrackCoords, {
                         color: '#A0A0A0',
                         weight: 2,
@@ -119,7 +121,9 @@ document.addEventListener('DOMContentLoaded', function () {
                             opacity: 0.9
                         }).addTo(map);
                     }
-                    map.fitBounds(L.latLngBounds(fullTrackCoords));
+                    if (fullTrackCoords.length > 0) {
+                        map.fitBounds(L.latLngBounds(fullTrackCoords));
+                    }
                 }
             }
         });
@@ -232,6 +236,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function TrackCoordsCalculation(lats, lons, targetLength) {
         fullTrackCoords = lats.map((v, i) => [lats[i], lons[i]]);
         
+        // Populate wave track run subsets
         waveTrackCoords = fullTrackCoords.filter((coord, index) => {
             if (index > 0) {
                 let prev = fullTrackCoords[index - 1];
