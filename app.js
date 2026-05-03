@@ -10,7 +10,6 @@ document.addEventListener('DOMContentLoaded', function () {
     let waveTrackCoords = [];
     let longestTrackCoords = [];
     let fastestTrackCoords = [];
-    let waveTrackCoords = [];
 
     dropZone.addEventListener('click', () => fileInput.click());
 
@@ -65,7 +64,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const toggleWaveOnly = document.getElementById('toggleWaveOnly');
     if (toggleWaveOnly) {
         toggleWaveOnly.addEventListener('change', function () {
             if (map) {
@@ -237,8 +235,8 @@ document.addEventListener('DOMContentLoaded', function () {
         let fastestWaveKmh = (maxSpeedKmh * 0.92).toFixed(1);
 
         updateDashboard(
-            totalTimeMinutes - LetMinutes, 
-            LetMinutes, 
+            totalTimeMinutes - motorMinutes, 
+            motorMinutes, 
             maxSpeedKmh, 
             waveCount, 
             longestWaveMeters, 
