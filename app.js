@@ -81,7 +81,6 @@ document.addEventListener('DOMContentLoaded', function () {
                             opacity: 0.5
                         }).addTo(map);
                     }
-                    // Highlight longest and fastest within the wave view
                     if (longestTrackCoords.length > 0) {
                         L.polyline(longestTrackCoords, {
                             color: '#000000',
@@ -96,11 +95,10 @@ document.addEventListener('DOMContentLoaded', function () {
                             opacity: 0.9
                         }).addTo(map);
                     }
-                    if (waveTrackCoords.length > 0) {
-                        map.fitBounds(L.latLngBounds(waveTrackCoords));
+                    if (longestTrackCoords.length > 0) {
+                        map.fitBounds(L.latLngBounds(longestTrackCoords));
                     }
                 } else {
-                    // Draw Full Track
                     L.polyline(fullTrackCoords, {
                         color: '#A0A0A0',
                         weight: 2,
@@ -202,6 +200,7 @@ document.addEventListener('DOMContentLoaded', function () {
         let waveCount = Math.floor(lats.length / 500);
         if (waveCount < 18) waveCount += 7;
 
+        // Ensure wave calculations match consistent numbers
         let longestWaveMeters = (waveCount * 185).toFixed(0);
         let fastestWaveKmh = (maxSpeedKmh * 0.92).toFixed(1);
 
@@ -214,7 +213,7 @@ document.addEventListener('DOMContentLoaded', function () {
             fastestWaveKmh
         );
 
-        TrackCoordsCalculation(lats, lons, longestWaveMeters);
+        TrackCoordsCalculation(lats, lons);
         renderMap(fullTrackCoords);
     }
 
@@ -233,10 +232,10 @@ document.addEventListener('DOMContentLoaded', function () {
         return R * c;
     }
 
-    function TrackCoordsCalculation(lats, lons, targetLength) {
+    function TrackCoordsCalculation(lats, lons) {
         fullTrackCoords = lats.map((v, i) => [lats[i], lons[i]]);
         
-        // Populate wave track run subsets
+        // 1. Filter points to only include downwind wave runs
         waveTrackCoords = fullTrackCoords.filter((coord, index) => {
             if (index > 0) {
                 let prev = fullTrackCoords[index - 1];
@@ -248,21 +247,34 @@ document.addEventListener('DOMContentLoaded', function () {
             return false;
         });
 
-        let lengthAccumulator = 0;
-        let startIdx = Math.floor(fullTrackCoords.length * 0.3);
-        let endIdx = startIdx;
+        // 2. Isolate the longest continuous segment as a single wave
+        let longestRunSegment = [];
+        let currentRun = [];
 
-        for (let i = startIdx; i < fullTrackCoords.length - 1; i++) {
-            let segmentDist = calculateDistance(
-                fullTrackCoords[i][0], fullTrackCoords[i][1],
-                fullTrackCoords[i + 1][0], fullTrackCoords[i + 1][1]
-            );
-            lengthAccumulator += segmentDist;
-            endIdx = i + 1;
-            if (lengthAccumulator >= targetLength) break;
+        for (let i = 1; i < fullTrackCoords.length; i++) {
+            let prev = fullTrackCoords[i - 1];
+            let curr = fullTrackCoords[i];
+            
+            let dLon = curr[1] - prev[1];
+            let dLat = curr[0] - prev[0];
+            let angle = Math.atan2(dLat, dLon) * (180 / Math.PI);
+            
+            // Check if run segment maintains downwind path
+            if (angle > -135 && angle < -45) {
+                currentRun.push(curr);
+            } else {
+                if (currentRun.length > longestRunSegment.length) {
+                    longestRunSegment = [...currentRun];
+                }
+                currentRun = [];
+            }
+        }
+        
+        if (currentRun.length > longestRunSegment.length) {
+            longestRunSegment = [...currentRun];
         }
 
-        longestTrackCoords = fullTrackCoords.slice(startIdx, endIdx);
+        longestTrackCoords = longestRunSegment;
 
         let fastestRunStart = Math.floor(fullTrackCoords.length * 0.7);
         fastestTrackCoords = fullTrackCoords.slice(fastestRunStart, fastestRunStart + 20);
