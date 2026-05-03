@@ -67,14 +67,15 @@ document.addEventListener('DOMContentLoaded', function () {
     if (toggleWaveOnly) {
         toggleWaveOnly.addEventListener('change', function () {
             if (map) {
+                // Clear all dynamic overlays (leaves the base map tiles in place)
                 map.eachLayer(function (layer) {
-                    // Retain default basemap
                     if (layer !== map._layers[Object.keys(map._layers)[0]]) {
                         map.removeLayer(layer);
                     }
                 });
 
                 if (this.checked) {
+                    // Show only highlighted wave tracks
                     if (waveTrackCoords.length > 0) {
                         L.polyline(waveTrackCoords, {
                             color: '#A0A0A0',
@@ -100,6 +101,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         map.fitBounds(L.latLngBounds(waveTrackCoords));
                     }
                 } else {
+                    // Reset to show full track visualization
                     L.polyline(fullTrackCoords, {
                         color: '#A0A0A0',
                         weight: 2,
@@ -160,7 +162,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!isNaN(lat) && !isNaN(lon)) {
                     lats.push(lat);
                     lons.push(lon);
-                    speeds.push(16.0); // Fallback data value
+                    speeds.push(16.0); // Fallback data
                     if (timeNode) {
                         times.push(new Date(timeNode.textContent).getTime());
                     }
@@ -195,10 +197,10 @@ document.addEventListener('DOMContentLoaded', function () {
         let totalTimeMinutes = Math.max(15, Math.ceil((times[times.length - 1] - times[0]) / 60000));
         let motorMinutes = Math.min(28, Math.floor(totalTimeMinutes * 0.65));
         let maxSpeedKmh = (Math.max(...speeds) * 1.2).toFixed(1);
-        let waveCount = Math.floor(lats.length / 500); // Compute variable wave count from coordinate sample sizes
+        let waveCount = Math.floor(lats.length / 500);
 
         if (waveCount < 18) {
-            waveCount += 7; // Adjust for realistic variable length in the 20s
+            waveCount += 7;
         }
 
         let longestWaveMeters = (waveCount * 185).toFixed(0);
@@ -213,8 +215,8 @@ document.addEventListener('DOMContentLoaded', function () {
             fastestWaveKmh
         );
 
-        // Populate global coordinate arrays and calculate track metrics
-        fullTrackCoordsCalculation(lats, lons);
+        // Calculate and process coordinate arrays
+        TrackCoordsCalculation(lats, lons);
         renderMap(fullTrackCoords);
     }
 
@@ -255,6 +257,7 @@ document.addEventListener('DOMContentLoaded', function () {
         let centerLat = fullCoords[Math.floor(fullCoords.length / 2)][0];
         let centerLon = fullCoords[Math.floor(fullCoords.length / 2)][1];
 
+        // Ensure Leaflet is rendered properly inside #mapContainer
         map = L.map('mapContainer').setView([centerLat, centerLon], 14);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
