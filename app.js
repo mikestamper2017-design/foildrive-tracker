@@ -186,7 +186,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // Drop initial preparation points (walking/standing) until we hit valid speeds
+        // Drop initial preparation points until valid speed is met
         let firstValidIndex = 0;
         for (let i = 0; i < speeds.length; i++) {
             if (speeds[i] > 11.0) {
@@ -200,7 +200,7 @@ document.addEventListener('DOMContentLoaded', function () {
         times = times.slice(firstValidIndex);
         speeds = speeds.slice(firstValidIndex);
 
-        // Drop trailing points when the user stops the activity at the end
+        // Trim trailing values
         let lastValidIndex = speeds.length - 1;
         for (let i = speeds.length - 1; i >= 0; i--) {
             if (speeds[i] > 11.0) {
@@ -224,7 +224,6 @@ document.addEventListener('DOMContentLoaded', function () {
         let longestWaveMeters = (waveCount * 185).toFixed(0);
         let fastestWaveKmh = (maxSpeedKmh * 0.92).toFixed(1);
 
-        // Corrected variable assignment
         updateDashboard(
             totalTimeMinutes - motorMinutes, 
             motorMinutes, 
