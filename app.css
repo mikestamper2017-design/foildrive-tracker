@@ -222,3 +222,34 @@ input:checked + .slider:before {
     opacity: 0;
     cursor: pointer;
 }
+.saved-panel {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    background: var(--card-bg);
+    padding: 16px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    margin-bottom: 24px;
+}
+
+.saved-panel label {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    letter-spacing: 0.5px;
+}
+
+.saved-panel select {
+    flex-grow: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--bg-color);
+    font-size: 13px;
+}
+
+/* Mobile Pull-to-refresh prevention */
+body {
+    overscroll-behavior-y: contain;
+}
