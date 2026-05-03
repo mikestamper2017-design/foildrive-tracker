@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let longestTrackCoords = [];
     let fastestTrackCoords = [];
     
+    // Populate saved sessions
     populateSavedSessions();
 
     if (fileInput) {
@@ -23,6 +24,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    // Drag and drop event listeners
     if (dropZone) {
         dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
@@ -161,7 +163,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     let dateString = dateObj.toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' });
                     let timeString = dateObj.toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' });
                     
-                    // Fallback to the human-readable part or text token
                     let token = parts.slice(2).join(' ');
                     niceName = `${dateString} @ ${timeString} - ${token}`;
                 } else {
@@ -200,9 +201,18 @@ document.addEventListener('DOMContentLoaded', function () {
         let lons = [];
         let times = [];
         let speeds = [];
+        let sessionDate = new Date();
 
         if (fileName.endsWith('.gpx')) {
             let trkpts = xmlDoc.getElementsByTagName("trkpt");
+            
+            if (trkpts.length > 0) {
+                let firstTimeNode = trkpts[0].getElementsByTagName("time")[0];
+                if (firstTimeNode) {
+                    sessionDate = new Date(firstTimeNode.textContent);
+                }
+            }
+            
             for (let i = 0; i < trkpts.length; i++) {
                 let lat = parseFloat(trkpts[i].getAttribute("lat"));
                 let lon = parseFloat(trkpts[i].getAttribute("lon"));
@@ -232,6 +242,7 @@ document.addEventListener('DOMContentLoaded', function () {
                             let rawSpeedMps = dist / timeDiff;
                             let calculatedSpeedKmh = rawSpeedMps * 3.6;
 
+                            // Compensate if the unit is read as knots instead of km/h
                             if (calculatedSpeedKmh > 55) {
                                 calculatedSpeedKmh = calculatedSpeedKmh / 1.852;
                             }
@@ -246,6 +257,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
         } else {
+            // TCX file parsing
+            let idNode = xmlDoc.getElementsByTagName("Id")[0];
+            if (idNode) {
+                sessionDate = new Date(idNode.textContent);
+            }
+
             let nodes = xmlDoc.getElementsByTagName("Position");
             let speedNodes = xmlDoc.getElementsByTagName("Speed");
             let timeNodes = xmlDoc.getElementsByTagName("Time");
@@ -271,6 +288,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
+        // Apply a Low-Pass Window Smoothing filter
         if (speeds.length > 5) {
             let smoothedSpeeds = [];
             for (let i = 0; i < speeds.length; i++) {
@@ -333,7 +351,9 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         let shortName = originalName.replace('.tcx', '').replace('.gpx', '').substring(0, 20);
-        localStorage.setItem(`Swellpath_${Date.now()}_${shortName}`, JSON.stringify(dataObject));
+        
+        // Save using true activity start time
+        localStorage.setItem(`Swellpath_${sessionDate.getTime()}_${shortName}`, JSON.stringify(dataObject));
 
         updateDashboard(
             totalTimeMinutes - motorMinutes, 
