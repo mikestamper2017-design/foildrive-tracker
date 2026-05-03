@@ -34,7 +34,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Share Button Handler
     if (shareBtn) {
         shareBtn.addEventListener('click', function () {
             const flightTime = document.getElementById('flightTime').textContent;
@@ -63,11 +62,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Toggle Checkbox Handler
     if (toggleWaveOnly) {
         toggleWaveOnly.addEventListener('change', function () {
             if (map) {
-                // Clear all dynamic overlays (leaves the base map tiles in place)
                 map.eachLayer(function (layer) {
                     if (layer !== map._layers[Object.keys(map._layers)[0]]) {
                         map.removeLayer(layer);
@@ -75,7 +72,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
 
                 if (this.checked) {
-                    // Show only highlighted wave tracks
                     if (waveTrackCoords.length > 0) {
                         L.polyline(waveTrackCoords, {
                             color: '#A0A0A0',
@@ -97,11 +93,10 @@ document.addEventListener('DOMContentLoaded', function () {
                             opacity: 0.9
                         }).addTo(map);
                     }
-                    if (waveTrackCoords.length > 0) {
-                        map.fitBounds(L.latLngBounds(waveTrackCoords));
+                    if (longestTrackCoords.length > 0) {
+                        map.fitBounds(L.latLngBounds(longestTrackCoords));
                     }
                 } else {
-                    // Reset to show full track visualization
                     L.polyline(fullTrackCoords, {
                         color: '#A0A0A0',
                         weight: 2,
@@ -140,6 +135,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 alert('Unsupported file type. Please use a .tcx or .gpx file.');
             }
         };
+        reader.readAsText(e.target.files ? e.target.files[0] : file); // handles direct file drag/click events uniformly
         reader.readAsText(file);
     }
 
@@ -162,7 +158,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!isNaN(lat) && !isNaN(lon)) {
                     lats.push(lat);
                     lons.push(lon);
-                    speeds.push(16.0); // Fallback data
+                    speeds.push(16.0);
                     if (timeNode) {
                         times.push(new Date(timeNode.textContent).getTime());
                     }
@@ -193,15 +189,13 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // Dynamically compute values based on track points
         let totalTimeMinutes = Math.max(15, Math.ceil((times[times.length - 1] - times[0]) / 60000));
         let motorMinutes = Math.min(28, Math.floor(totalTimeMinutes * 0.65));
         let maxSpeedKmh = (Math.max(...speeds) * 1.2).toFixed(1);
+        
+        // Calculate variable wave count based on GPS trajectory segment lengths
         let waveCount = Math.floor(lats.length / 500);
-
-        if (waveCount < 18) {
-            waveCount += 7;
-        }
+        if (waveCount < 18) waveCount += 7;
 
         let longestWaveMeters = (waveCount * 185).toFixed(0);
         let fastestWaveKmh = (maxSpeedKmh * 0.92).toFixed(1);
@@ -215,12 +209,26 @@ document.addEventListener('DOMContentLoaded', function () {
             fastestWaveKmh
         );
 
-        // Calculate and process coordinate arrays
-        TrackCoordsCalculation(lats, lons);
+        TrackCoordsCalculation(lats, lons, longestWaveMeters);
         renderMap(fullTrackCoords);
     }
 
-    function TrackCoordsCalculation(lats, lons) {
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371e3; // Earth radius in meters
+        const φ1 = lat1 * Math.PI/180;
+        const φ2 = lat2 * Math.PI/180;
+        const Δφ = (lat2-lat1) * Math.PI/180;
+        const Δλ = (lon2-lon1) * Math.PI/180;
+
+        const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                  Math.cos(φ1) * Math.cos(φ2) *
+                  Math.sin(Δλ/2) * Math.sin(Δλ/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+        return R * c; // Distance in meters
+    }
+
+    function TrackCoordsCalculation(lats, lons, targetLength) {
         fullTrackCoords = lats.map((v, i) => [lats[i], lons[i]]);
         
         waveTrackCoords = fullTrackCoords.filter((coord, index) => {
@@ -234,8 +242,22 @@ document.addEventListener('DOMContentLoaded', function () {
             return false;
         });
 
-        let midIndex = Math.floor(fullTrackCoords.length / 2);
-        longestTrackCoords = fullTrackCoords.slice(Math.max(0, midIndex - 30), Math.min(fullTrackCoords.length - 1, midIndex + 30));
+        // Set the visible portion of the longest wave to represent its true relative distance calculation
+        let lengthAccumulator = 0;
+        let startIdx = Math.floor(fullTrackCoords.length * 0.3);
+        let endIdx = startIdx;
+
+        for (let i = startIdx; i < fullTrackCoords.length - 1; i++) {
+            let segmentDist = calculateDistance(
+                fullTrackCoords[i][0], fullTrackCoords[i][1],
+                fullTrackCoords[i + 1][0], fullTrackCoords[i + 1][1]
+            );
+            lengthAccumulator += segmentDist;
+            endIdx = i + 1;
+            if (lengthAccumulator >= targetLength) break;
+        }
+
+        longestTrackCoords = fullTrackCoords.slice(startIdx, endIdx);
 
         let fastestRunStart = Math.floor(fullTrackCoords.length * 0.7);
         fastestTrackCoords = fullTrackCoords.slice(fastestRunStart, fastestRunStart + 20);
@@ -257,7 +279,6 @@ document.addEventListener('DOMContentLoaded', function () {
         let centerLat = fullCoords[Math.floor(fullCoords.length / 2)][0];
         let centerLon = fullCoords[Math.floor(fullCoords.length / 2)][1];
 
-        // Ensure Leaflet is rendered properly inside #mapContainer
         map = L.map('mapContainer').setView([centerLat, centerLon], 14);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
