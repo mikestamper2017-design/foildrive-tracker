@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const longestWave = document.getElementById('longestWave').textContent;
             const fastestWave = document.getElementById('fastestWave').textContent;
 
-            const shareText = `FoilDrive Session Summary:\n` +
+            const shareText = `Swellpath Session Summary:\n` +
                 `• Flight Time: ${flightTime}\n` +
                 `• Motor Assist Time: ${motorTime}\n` +
                 `• Max Speed: ${maxSpeed}\n` +
@@ -64,6 +64,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    const toggleWaveOnly = document.getElementById('toggleWaveOnly');
     if (toggleWaveOnly) {
         toggleWaveOnly.addEventListener('change', function () {
             if (map) {
@@ -186,7 +187,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // 1. Drop initial preparation points (walking/standing) until we hit valid speeds
+        // Drop initial prep points (walking/standing) until we hit valid speeds
         let firstValidIndex = 0;
         for (let i = 0; i < speeds.length; i++) {
             if (speeds[i] > 11.0) {
@@ -200,7 +201,7 @@ document.addEventListener('DOMContentLoaded', function () {
         times = times.slice(firstValidIndex);
         speeds = speeds.slice(firstValidIndex);
 
-        // 2. Trim trailing points when the user stops at the end
+        // Drop trailing points when user stops activity at the end
         let lastValidIndex = speeds.length - 1;
         for (let i = speeds.length - 1; i >= 0; i--) {
             if (speeds[i] > 11.0) {
@@ -215,7 +216,7 @@ document.addEventListener('DOMContentLoaded', function () {
         speeds = speeds.slice(0, lastValidIndex + 1);
 
         let totalTimeMinutes = Math.max(12, Math.ceil((times[times.length - 1] - times[0]) / 60000));
-        let motorMinutes = Math.min(22, Math.floor(totalMinutes * 0.38));
+        let motorMinutes = Math.min(22, Math.floor(totalTimeMinutes * 0.38));
         let maxSpeedKmh = (Math.max(...speeds) * 1.05).toFixed(1);
         
         let waveCount = Math.floor(lats.length / 500);
@@ -225,7 +226,7 @@ document.addEventListener('DOMContentLoaded', function () {
         let fastestWaveKmh = (maxSpeedKmh * 0.92).toFixed(1);
 
         updateDashboard(
-            totalMinutes - motorMinutes, 
+            totalTimeMinutes - motorMinutes, 
             motorMinutes, 
             maxSpeedKmh, 
             waveCount, 
