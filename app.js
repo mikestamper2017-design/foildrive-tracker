@@ -14,7 +14,9 @@ document.addEventListener('DOMContentLoaded', function () {
     dropZone.addEventListener('click', () => fileInput.click());
 
     fileInput.addEventListener('change', function (e) {
-        handleFile(e.target.files[0]);
+        if (e.target.files.length > 0) {
+            handleFile(e.target.files[0]);
+        }
     });
 
     dropZone.addEventListener('dragover', (e) => {
@@ -135,7 +137,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 alert('Unsupported file type. Please use a .tcx or .gpx file.');
             }
         };
-        reader.readAsText(e.target.files ? e.target.files[0] : file); // handles direct file drag/click events uniformly
+        
         reader.readAsText(file);
     }
 
@@ -193,7 +195,6 @@ document.addEventListener('DOMContentLoaded', function () {
         let motorMinutes = Math.min(28, Math.floor(totalTimeMinutes * 0.65));
         let maxSpeedKmh = (Math.max(...speeds) * 1.2).toFixed(1);
         
-        // Calculate variable wave count based on GPS trajectory segment lengths
         let waveCount = Math.floor(lats.length / 500);
         if (waveCount < 18) waveCount += 7;
 
@@ -225,7 +226,7 @@ document.addEventListener('DOMContentLoaded', function () {
                   Math.sin(Δλ/2) * Math.sin(Δλ/2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
-        return R * c; // Distance in meters
+        return R * c;
     }
 
     function TrackCoordsCalculation(lats, lons, targetLength) {
@@ -242,7 +243,6 @@ document.addEventListener('DOMContentLoaded', function () {
             return false;
         });
 
-        // Set the visible portion of the longest wave to represent its true relative distance calculation
         let lengthAccumulator = 0;
         let startIdx = Math.floor(fullTrackCoords.length * 0.3);
         let endIdx = startIdx;
