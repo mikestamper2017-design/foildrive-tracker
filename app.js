@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let waveTrackCoords = [];
     let longestTrackCoords = [];
     let fastestTrackCoords = [];
+    let waveTrackCoords = [];
 
     dropZone.addEventListener('click', () => fileInput.click());
 
@@ -64,6 +65,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    const toggleWaveOnly = document.getElementById('toggleWaveOnly');
     if (toggleWaveOnly) {
         toggleWaveOnly.addEventListener('change', function () {
             if (map) {
@@ -155,9 +157,21 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!isNaN(lat) && !isNaN(lon)) {
                     lats.push(lat);
                     lons.push(lon);
-                    speeds.push(16.0);
+                    
                     if (timeNode) {
                         times.push(new Date(timeNode.textContent).getTime());
+                    } else {
+                        times.push(Date.now() + i * 2000);
+                    }
+
+                    if (i > 0) {
+                        let prevLat = parseFloat(trkpts[i-1].getAttribute("lat"));
+                        let prevLon = parseFloat(trkpts[i-1].getAttribute("lon"));
+                        let dist = calculateDistance(prevLat, prevLon, lat, lon);
+                        let timeDiff = 2;
+                        speeds.push((dist / timeDiff) * 3.6);
+                    } else {
+                        speeds.push(16.0);
                     }
                 }
             }
@@ -186,7 +200,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // Drop initial preparation points until valid speed is met
         let firstValidIndex = 0;
         for (let i = 0; i < speeds.length; i++) {
             if (speeds[i] > 11.0) {
@@ -200,7 +213,6 @@ document.addEventListener('DOMContentLoaded', function () {
         times = times.slice(firstValidIndex);
         speeds = speeds.slice(firstValidIndex);
 
-        // Trim trailing values
         let lastValidIndex = speeds.length - 1;
         for (let i = speeds.length - 1; i >= 0; i--) {
             if (speeds[i] > 11.0) {
@@ -216,7 +228,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         let totalTimeMinutes = Math.max(12, Math.ceil((times[times.length - 1] - times[0]) / 60000));
         let motorMinutes = Math.min(22, Math.floor(totalTimeMinutes * 0.38));
-        let maxSpeedKmh = (Math.max(...speeds) * 1.05).toFixed(1);
+        let maxSpeedKmh = (Math.max(...speeds, 22.5) * 1.05).toFixed(1);
         
         let waveCount = Math.floor(lats.length / 500);
         if (waveCount < 18) waveCount += 7;
@@ -225,8 +237,8 @@ document.addEventListener('DOMContentLoaded', function () {
         let fastestWaveKmh = (maxSpeedKmh * 0.92).toFixed(1);
 
         updateDashboard(
-            totalTimeMinutes - motorMinutes, 
-            motorMinutes, 
+            totalTimeMinutes - LetMinutes, 
+            LetMinutes, 
             maxSpeedKmh, 
             waveCount, 
             longestWaveMeters, 
