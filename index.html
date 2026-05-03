@@ -25,6 +25,14 @@
             <input type="file" id="fileInput" accept=".tcx,.gpx" style="display: none;">
         </div>
 
+        <div class="saved-panel">
+            <label for="savedSessions">Saved Sessions</label>
+            <select id="savedSessions">
+                <option value="">-- No sessions saved --</option>
+            </select>
+            <button id="loadSessionBtn" class="action-btn">Load Selected</button>
+        </div>
+
         <div id="dashboard" class="dashboard dashboard-hidden">
             <div class="metric-card">
                 <span class="label">Flight Time</span>
