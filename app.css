@@ -4,10 +4,11 @@
     --card-bg: #FFFFFF;
     --text-primary: #111111;
     --text-secondary: #717171;
-    --border-color: #E0E0E0;
-    --border-radius: 12px;
+    --border-color: #E6E6E6;
+    --border-radius: 16px;
     --accent-color: #D4AF37;
     --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.05);
 }
 
 * {
@@ -21,7 +22,7 @@ body {
     color: var(--text-primary);
     font-family: var(--font-family);
     line-height: 1.5;
-    padding: 24px 16px;
+    padding: 40px 16px 24px 16px;
     max-width: 768px;
     margin: 0 auto;
     overscroll-behavior-y: contain; 
@@ -30,18 +31,20 @@ body {
 /* Header */
 .app-header {
     text-align: center;
-    margin-bottom: 32px;
+    margin-bottom: 40px;
 }
 
 .app-header .logo {
-    font-size: 22px;
-    font-weight: 600;
-    letter-spacing: -0.5px;
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -1px;
     color: var(--text-primary);
 }
 
 .app-header .subtitle {
-    font-size: 13px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
     color: var(--text-secondary);
     margin-top: 4px;
 }
@@ -49,18 +52,20 @@ body {
 /* Upload Drop Zone */
 .drop-zone {
     position: relative;
-    padding: 48px 24px;
-    border: 2px dashed var(--border-color);
+    padding: 56px 24px;
+    border: 1.5px solid var(--border-color);
     border-radius: var(--border-radius);
     text-align: center;
     background: var(--card-bg);
     cursor: pointer;
-    transition: border-color 0.2s ease, background-color 0.2s ease;
+    transition: all 0.2s ease-in-out;
     margin-bottom: 24px;
+    box-shadow: var(--shadow);
 }
 
 .drop-zone:hover {
     border-color: var(--text-primary);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
 }
 
 .drop-zone input[type="file"] {
@@ -86,28 +91,29 @@ body {
 /* Saved Sessions Dropdown Card */
 .saved-panel {
     display: flex;
-    gap: 12px;
+    gap: 16px;
     align-items: center;
     background: var(--card-bg);
-    padding: 16px;
+    padding: 16px 20px;
     border-radius: var(--border-radius);
     border: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
     margin-bottom: 24px;
 }
 
 .saved-panel label {
-    font-size: 11px;
+    font-size: 10px;
     text-transform: uppercase;
     color: var(--text-secondary);
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
     font-weight: 600;
 }
 
 .saved-panel select {
     flex-grow: 1;
-    padding: 8px 12px;
+    padding: 10px 14px;
     border: 1px solid var(--border-color);
-    border-radius: 6px;
+    border-radius: 8px;
     background: var(--bg-color);
     font-size: 13px;
     color: var(--text-primary);
@@ -119,23 +125,24 @@ body {
     background: var(--text-primary);
     color: var(--card-bg);
     border: none;
-    border-radius: 6px;
-    padding: 8px 16px;
-    font-size: 13px;
-    font-weight: 500;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
     cursor: pointer;
     transition: background 0.2s;
 }
 
 .action-btn:hover {
-    background: #333333;
+    background: #222222;
 }
 
 /* Dashboard Analytics Layout */
 .dashboard {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
+    gap: 16px;
     margin-bottom: 24px;
 }
 
@@ -146,32 +153,34 @@ body {
 .metric-card {
     background: var(--card-bg);
     border-radius: var(--border-radius);
-    padding: 16px;
+    padding: 18px 16px;
     border: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
     display: flex;
     flex-direction: column;
 }
 
 .metric-card .label {
-    font-size: 11px;
+    font-size: 10px;
     text-transform: uppercase;
     color: var(--text-secondary);
-    margin-bottom: 4px;
+    margin-bottom: 6px;
     letter-spacing: 0.5px;
+    font-weight: 500;
 }
 
 .metric-card .value {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 600;
-    letter-spacing: -0.3px;
+    letter-spacing: -0.5px;
 }
 
 .longest-wave-card {
-    border-top: 3px solid var(--text-primary);
+    border-top: 4px solid var(--text-primary);
 }
 
 .fastest-wave-card {
-    border-top: 3px solid var(--accent-color);
+    border-top: 4px solid var(--accent-color);
 }
 
 /* Controls Wrapper */
@@ -182,6 +191,11 @@ body {
     margin-bottom: 24px;
     flex-wrap: wrap;
     gap: 16px;
+    background: var(--card-bg);
+    padding: 16px 20px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
 }
 
 .switch-container {
@@ -225,18 +239,20 @@ input:checked + .slider:before {
 }
 
 .toggle-text {
-    margin-left: 10px;
+    margin-left: 12px;
     font-size: 13px;
     color: var(--text-secondary);
+    font-weight: 400;
 }
 
 /* Map View */
 .map-container {
     width: 100%;
-    height: 380px;
+    height: 400px;
     background-color: #EFEFEF;
     border-radius: var(--border-radius);
     border: 1px solid var(--border-color);
+    box-shadow: var(--shadow);
     overflow: hidden;
 }
 
