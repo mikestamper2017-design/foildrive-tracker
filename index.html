@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FoilDrive Tracker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>FoilDrive Session Analyzer</h1>
+            <p class="subtitle">Minimal, clear performance analysis</p>
+        </header>
+
+        <section class="upload-section">
+            <div class="drop-zone" id="dropZone">
+                <p>Drag and drop your Garmin GPX/TCX files here, or <label for="fileInput" class="file-label">browse</label></p>
+                <input type="file" id="fileInput" accept=".gpx, .tcx" style="display: none;">
+            </div>
+        </section>
+
+        <section id="dashboard" class="dashboard-hidden">
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <h3>Flight Time</h3>
+                    <p id="flightTime">--</p>
+                </div>
+                <div class="metric-card">
+                    <h3>Motor Assist Time</h3>
+                    <p id="motorTime">--</p>
+                </div>
+                <div class="metric-card">
+                    <h3>Max Speed</h3>
+                    <p id="maxSpeed">-- km/h</p>
+                </div>
+            </div>
+
+            <div id="mapContainer" class="map-box">
+                </div>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
