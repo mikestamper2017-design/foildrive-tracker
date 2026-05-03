@@ -71,11 +71,13 @@ document.addEventListener('DOMContentLoaded', function () {
             const waveCount = document.getElementById('waveCount').textContent;
             const longestWave = document.getElementById('longestWave').textContent;
             const fastestWave = document.getElementById('fastestWave').textContent;
+            const totalDistance = document.getElementById('totalDistance').textContent;
 
             const shareText = `Swellpath Session Summary:\n` +
                 `• Flight Time: ${flightTime}\n` +
                 `• Motor Assist Time: ${motorTime}\n` +
                 `• Max Speed: ${maxSpeed}\n` +
+                `• Cumulative Distance: ${totalDistance}\n` +
                 `• Wave Count: ${waveCount}\n` +
                 `• Longest Wave: ${longestWave}\n` +
                 `• Fastest Wave: ${fastestWave}\n\n` +
@@ -209,13 +211,13 @@ document.addEventListener('DOMContentLoaded', function () {
                         let prevLon = parseFloat(trkpts[i-1].getAttribute("lon"));
                         let dist = calculateDistance(prevLat, prevLon, lat, lon);
                         
-                        let timeDiff = 2; // Default fallback
+                        let timeDiff = 2;
                         if (times.length >= 2) {
                             timeDiff = (times[times.length - 1] - times[times.length - 2]) / 1000;
                         }
                         
                         if (timeDiff > 0) {
-                            speeds.push((dist / timeDiff) * 3.6); // Convert to km/h
+                            speeds.push((dist / timeDiff) * 3.6);
                         } else {
                             speeds.push(16.0);
                         }
@@ -279,7 +281,6 @@ document.addEventListener('DOMContentLoaded', function () {
         let motorMinutes = Math.min(22, Math.floor(totalTimeMinutes * 0.38));
         let maxSpeedKmh = (Math.max(...speeds, 22.5) * 1.05).toFixed(1);
         
-        // Use updated dynamic wave calculation
         let waveCount = Math.floor(lats.length / 500);
         if (waveCount < 18) waveCount += 7;
 
@@ -346,7 +347,16 @@ document.addEventListener('DOMContentLoaded', function () {
     function TrackCoordsCalculation(lats, lons) {
         fullTrackCoords = lats.map((v, i) => [lats[i], lons[i]]);
         
-        // Broaden the downwind angle threshold and segment identification
+        // 1. Calculate the Cumulative Total Distance for the whole session
+        let fullDistanceMeters = 0;
+        for (let i = 1; i < fullTrackCoords.length; i++) {
+            fullDistanceMeters += calculateDistance(
+                fullTrackCoords[i-1][0], fullTrackCoords[i-1][1],
+                fullTrackCoords[i][0], fullTrackCoords[i][1]
+            );
+        }
+
+        // 2. Filter downwind runs
         waveTrackCoords = fullTrackCoords.filter((coord, index) => {
             if (index > 0) {
                 let prev = fullTrackCoords[index - 1];
@@ -360,6 +370,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         let longestRunSegment = [];
         let currentRun = [];
+        let allRuns = [];
 
         for (let i = 1; i < fullTrackCoords.length; i++) {
             let prev = fullTrackCoords[i - 1];
@@ -372,18 +383,36 @@ document.addEventListener('DOMContentLoaded', function () {
             if (angle > -145 && angle < -35) {
                 currentRun.push(curr);
             } else {
-                if (currentRun.length > longestRunSegment.length) {
-                    longestRunSegment = [...currentRun];
+                if (currentRun.length > 0) {
+                    allRuns.push([...currentRun]);
                 }
                 currentRun = [];
             }
         }
         
-        if (currentRun.length > longestRunSegment.length) {
-            longestRunSegment = [...currentRun];
+        if (currentRun.length > 0) {
+            allRuns.push([...currentRun]);
         }
 
-        longestTrackCoords = longestRunSegment;
+        let longestRunMeters = 0;
+        let bestRun = [];
+
+        for (let run of allRuns) {
+            let runDistance = 0;
+            for (let j = 1; j < run.length; j++) {
+                runDistance += calculateDistance(run[j-1][0], run[j-1][1], run[j][0], run[j][1]);
+            }
+            if (runDistance > longestRunMeters) {
+                longestRunMeters = runDistance;
+                bestRun = run;
+            }
+        }
+
+        longestTrackCoords = bestRun;
+
+        // Set Values
+        document.getElementById('totalDistance').textContent = `${(fullDistanceMeters / 1000).toFixed(2)} km`;
+        document.getElementById('longestWave').textContent = `${Math.round(longestRunMeters)} m`;
 
         let rawWaveCount = Math.floor(waveTrackCoords.length / 35); 
         document.getElementById('waveCount').textContent = Math.max(rawWaveCount, 12);
