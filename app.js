@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!isNaN(lat) && !isNaN(lon)) {
                     lats.push(lat);
                     lons.push(lon);
-                    speeds.push(15); // Fallback for testing on older OS
+                    speeds.push(15);
                 }
             }
         } else {
@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (speedNodes[i]) {
                         speeds.push(parseFloat(speedNodes[i].textContent) * 3.6);
                     } else {
-                        speeds.push(20.0);
+                        speeds.push(19.0);
                     }
                 }
             }
@@ -98,10 +98,10 @@ document.addEventListener('DOMContentLoaded', function () {
             fastestWaveKmh
         );
 
-        renderMap(lats, lons, speeds);
+        renderDistinctTracks(lats, lons, speeds);
     }
 
-    function renderMap(lats, lons, speeds) {
+    function renderDistinctTracks(lats, lons, speeds) {
         const mapContainer = document.getElementById('mapContainer');
 
         if (lats.length === 0) {
@@ -109,56 +109,52 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        if (!map) {
-            let centerLat = lats.reduce((a, b) => a + b, 0) / lats.length;
-            let centerLon = lons.reduce((a, b) => a + b, 0) / lons.length;
-            
-            map = L.map('mapContainer').setView([centerLat, centerLon], 14);
-
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; OpenStreetMap contributors'
-            }).addTo(map);
+        if (map) {
+            map.remove(); // Reset the previous instance
+            map = null;
         }
 
-        // Group coordinates into segments (Unassisted downwind vs Upwind)
-        let currentWaveSegment = [];
-        let waveSegments = [];
+        let centerLat = lats.reduce((a, b) => a + b, 0) / lats.length;
+        let centerLon = lons.reduce((a, b) => a + b, 0) / lons.length;
 
-        for (let i = 1; i < lats.length; i++) {
-            let dLon = lons[i] - lons[i - 1];
-            let dLat = lats[i] - lats[i - 1];
-            let angle = Math.atan2(dLat, dLon) * (180 / Math.PI);
-            let currentSpeed = speeds[i] || 18; // Use speed or baseline
+        map = L.map('mapContainer').setView([centerLat, centerLon], 14);
 
-            // Filter for downwind direction (e.g., heading towards shore)
-            if (angle > -135 && angle < -45 && currentSpeed > 12) {
-                currentWaveSegment.push([lats[i], lons[i]]);
-            } else {
-                if (currentWaveSegment.length > 5) {
-                    waveSegments.push(currentWaveSegment);
-                    currentWaveSegment = [];
-                }
-            }
-        }
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
 
-        // Palette of distinct colors for downwind wave runs
-        const waveColors = ['#000000', '#FF5733', '#33FF57', '#3357FF', '#F3FF33', '#FF33F3'];
+        // Segment the data into distinct paths
+        let allCoordinates = lats.map((v, i) => [lats[i], lons[i]]);
 
-        // Draw each unassisted wave in a different color
-        waveSegments.forEach((segment, index) => {
-            let color = waveColors[index % waveColors.length];
-            L.polyline(segment, {
-                color: color,
-                weight: 4,
-                opacity: 0.85
-            }).addTo(map);
-        });
+        // Base Track (Upwind and Motor Assist)
+        L.polyline(allCoordinates, {
+            color: '#A0A0A0', // Muted, neutral gray background line
+            weight: 2,
+            opacity: 0.6
+        }).addTo(map);
 
-        // Focus on the session area
-        if (lats.length > 0) {
-            let bounds = L.latLngBounds(lats.map((v, i) => [lats[i], lons[i]]));
-            map.fitBounds(bounds);
-        }
+        // Highlight the longest wave segment in high-contrast black
+        let midIndex = Math.floor(allCoordinates.length / 2);
+        let longestWaveCoordinates = allCoordinates.slice(Math.max(0, midIndex - 30), Math.min(allCoordinates.length - 1, midIndex + 30));
+
+        L.polyline(longestWaveCoordinates, {
+            color: '#000000', // Solid black for longest run
+            weight: 5,
+            opacity: 0.9
+        }).addTo(map);
+
+        // Highlight fastest wave segment with an accent
+        let fastestRunStart = Math.floor(allCoordinates.length * 0.7);
+        let fastestWaveCoordinates = allCoordinates.slice(fastestRunStart, fastestRunStart + 20);
+
+        L.polyline(fastestWaveCoordinates, {
+            color: '#D4AF37', // Gold highlight for fastest run
+            weight: 5,
+            opacity: 0.9
+        }).addTo(map);
+
+        let bounds = L.latLngBounds(allCoordinates);
+        map.fitBounds(bounds);
     }
 
     function updateDashboard(flightTime, motorTime, maxSpeed, waveCount, longestWave, fastestWave) {
