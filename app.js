@@ -74,6 +74,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
 
                 if (this.checked) {
+                    // Only display the actual wave track coordinates
                     if (waveTrackCoords.length > 0) {
                         L.polyline(waveTrackCoords, {
                             color: '#000000',
@@ -153,14 +154,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 let timeNode = trkpts[i].getElementsByTagName("time")[0];
                 
                 if (!isNaN(lat) && !isNaN(lon)) {
-                    // Exclude inland/beach paths based on a localized speed-trajectory window
-                    if (isOverWater(lat, lon)) {
-                        lats.push(lat);
-                        lons.push(lon);
-                        speeds.push(16.0);
-                        if (timeNode) {
-                            times.push(new Date(timeNode.textContent).getTime());
-                        }
+                    lats.push(lat);
+                    lons.push(lon);
+                    speeds.push(16.0);
+                    if (timeNode) {
+                        times.push(new Date(timeNode.textContent).getTime());
                     }
                 }
             }
@@ -173,23 +171,35 @@ document.addEventListener('DOMContentLoaded', function () {
                 let latNode = nodes[i].getElementsByTagName("LatitudeDegrees")[0];
                 let lonNode = nodes[i].getElementsByTagName("LongitudeDegrees")[0];
                 if (latNode && lonNode) {
-                    let lat = parseFloat(latNode.textContent);
-                    let lon = parseFloat(lonNode.textContent);
-                    let spd = speedNodes[i] ? parseFloat(speedNodes[i].textContent) * 3.6 : 19.5;
+                    lats.push(parseFloat(latNode.textContent));
+                    lons.push(parseFloat(lonNode.textContent));
                     
-                    // Filter rule: Keep points that are on water AND moving at unassisted speeds
-                    if (spd > 11.0 && isOverWater(lat, lon)) {
-                        lats.push(lat);
-                        lons.push(lon);
-                        speeds.push(spd);
+                    if (speedNodes[i]) {
+                        speeds.push(parseFloat(speedNodes[i].textContent) * 3.6);
+                    } else {
+                        speeds.push(19.5);
+                    }
 
-                        if (timeNodes[i]) {
-                            times.push(new Date(timeNodes[i].textContent).getTime());
-                        }
+                    if (timeNodes[i]) {
+                        times.push(new Date(timeNodes[i].textContent).getTime());
                     }
                 }
             }
         }
+
+        // Filter arrays to begin ONLY when unassisted runs start
+        let firstValidIndex = 0;
+        for (let i = 0; i < speeds.length; i++) {
+            if (speeds[i] > 11.0) {
+                firstValidIndex = i;
+                break;
+            }
+        }
+
+        lats = lats.slice(firstValidIndex);
+        lons = lons.slice(firstValidIndex);
+        times = times.slice(firstValidIndex);
+        speeds = speeds.slice(firstValidIndex);
 
         let totalTimeMinutes = Math.max(15, Math.ceil((times[times.length - 1] - times[0]) / 60000));
         let motorMinutes = Math.min(28, Math.floor(totalTimeMinutes * 0.38));
@@ -212,23 +222,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         TrackCoordsCalculation(lats, lons);
         renderMap(fullTrackCoords);
-    }
-
-    // Dynamic water/land boundary detector using radial proximity and a shoreline angle model
-    function isOverWater(lat, lon) {
-        // Exclude clear inland movements
-        if (lat > 43.82) return false; // North of Scarborough/Bluffer's Park inland threshold
-        if (lat < 43.50) return true;  // Open water
-        
-        // Approximate vector threshold for local shoreline
-        const referenceLongitude = -79.2845; 
-        if (lon < referenceLongitude) {
-            // Further refinement based on the slope of the beach line
-            let estimatedLatThreshold = 43.56 + (lon - (-79.35)) * 0.08;
-            if (lat < estimatedLatThreshold) return false; 
-        }
-        
-        return true;
     }
 
     function calculateDistance(lat1, lon1, lat2, lon2) {
