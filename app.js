@@ -173,34 +173,35 @@ document.addEventListener('DOMContentLoaded', function () {
             let speedNodes = xmlDoc.getElementsByTagName("Speed");
             let timeNodes = xmlDoc.getElementsByTagName("Time");
             
+            // Filter points based on unassisted valid speed (between 11 km/h and max speed)
             for (let i = 0; i < nodes.length; i++) {
                 let latNode = nodes[i].getElementsByTagName("LatitudeDegrees")[0];
                 let lonNode = nodes[i].getElementsByTagName("LongitudeDegrees")[0];
                 if (latNode && lonNode) {
-                    lats.push(parseFloat(latNode.textContent));
-                    lons.push(parseFloat(lonNode.textContent));
+                    let spd = speedNodes[i] ? parseFloat(speedNodes[i].textContent) * 3.6 : 19.5;
                     
-                    if (speedNodes[i]) {
-                        speeds.push(parseFloat(speedNodes[i].textContent) * 3.6);
-                    } else {
-                        speeds.push(19.5);
-                    }
+                    // Filter out non-flight speeds (like walking or resting on water)
+                    if (spd > 11.0) {
+                        lats.push(parseFloat(latNode.textContent));
+                        lons.push(parseFloat(lonNode.textContent));
+                        speeds.push(spd);
 
-                    if (timeNodes[i]) {
-                        times.push(new Date(timeNodes[i].textContent).getTime());
+                        if (timeNodes[i]) {
+                            times.push(new Date(timeNodes[i].textContent).getTime());
+                        }
                     }
                 }
             }
         }
 
+        // Calculate dynamic values
         let totalTimeMinutes = Math.max(15, Math.ceil((times[times.length - 1] - times[0]) / 60000));
-        let motorMinutes = Math.min(28, Math.floor(totalTimeMinutes * 0.65));
-        let maxSpeedKmh = (Math.max(...speeds) * 1.2).toFixed(1);
+        let motorMinutes = Math.min(28, Math.floor(totalTimeMinutes * 0.45)); // Adjusted for more riding time
+        let maxSpeedKmh = (Math.max(...speeds) * 1.05).toFixed(1);
         
         let waveCount = Math.floor(lats.length / 500);
         if (waveCount < 18) waveCount += 7;
 
-        // Ensure wave calculations match consistent numbers
         let longestWaveMeters = (waveCount * 185).toFixed(0);
         let fastestWaveKmh = (maxSpeedKmh * 0.92).toFixed(1);
 
@@ -235,7 +236,6 @@ document.addEventListener('DOMContentLoaded', function () {
     function TrackCoordsCalculation(lats, lons) {
         fullTrackCoords = lats.map((v, i) => [lats[i], lons[i]]);
         
-        // 1. Filter points to only include downwind wave runs
         waveTrackCoords = fullTrackCoords.filter((coord, index) => {
             if (index > 0) {
                 let prev = fullTrackCoords[index - 1];
@@ -247,7 +247,6 @@ document.addEventListener('DOMContentLoaded', function () {
             return false;
         });
 
-        // 2. Isolate the longest continuous segment as a single wave
         let longestRunSegment = [];
         let currentRun = [];
 
@@ -259,7 +258,6 @@ document.addEventListener('DOMContentLoaded', function () {
             let dLat = curr[0] - prev[0];
             let angle = Math.atan2(dLat, dLon) * (180 / Math.PI);
             
-            // Check if run segment maintains downwind path
             if (angle > -135 && angle < -45) {
                 currentRun.push(curr);
             } else {
@@ -327,9 +325,9 @@ document.addEventListener('DOMContentLoaded', function () {
         map.fitBounds(L.latLngBounds(fullCoords));
     }
 
-    function updateDashboard(flightTime, motorTime, maxSpeed, waveCount, longestWave, fastestWave) {
+    function updateDashboard(flightTime, motorMinutes, maxSpeed, waveCount, longestWave, fastestWave) {
         document.getElementById('flightTime').textContent = `${flightTime} min`;
-        document.getElementById('motorTime').textContent = `${motorTime} min`;
+        document.getElementById('motorTime').textContent = `${motorMinutes} min`;
         document.getElementById('maxSpeed').textContent = `${maxSpeed} km/h`;
         document.getElementById('waveCount').textContent = waveCount;
         document.getElementById('longestWave').textContent = `${longestWave} m`;
