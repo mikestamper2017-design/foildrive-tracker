@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const dashboard = document.getElementById('dashboard');
     const toggleWaveOnly = document.getElementById('toggleWaveOnly');
     const shareBtn = document.getElementById('shareBtn');
-    const savedSessionsSelect = document.getElementById('savedSessions');
+    const savedSelect = document.getElementById('savedSessions');
     const loadSessionBtn = document.getElementById('loadSessionBtn');
     
     let map = null;
@@ -42,19 +42,19 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     loadSessionBtn.addEventListener('click', function () {
-        const selectedId = savedSessionsSelect.value;
-        if (selectedId) {
-            const dataString = localStorage.getItem(selectedId);
+        const selectedKey = savedSelect.value;
+        if (selectedKey) {
+            const dataString = localStorage.getItem(selectedKey);
             if (dataString) {
                 try {
                     const sessionData = JSON.parse(dataString);
                     restoreDashboardData(sessionData);
                 } catch (err) {
-                    alert('Error loading session');
+                    alert('Error loading session data.');
                 }
             }
         } else {
-            alert('Select a session from the dropdown to load');
+            alert('Please select a saved session first.');
         }
     });
 
@@ -143,7 +143,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function populateSavedSessions() {
-        savedSessionsSelect.innerHTML = '<option value="">-- Saved Sessions --</option>';
+        if (!savedSelect) return;
+        savedSelect.innerHTML = '<option value="">-- Saved Sessions --</option>';
         for (let i = 0; i < localStorage.length; i++) {
             let key = localStorage.key(i);
             if (key.startsWith('Swellpath_')) {
@@ -151,7 +152,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 let option = document.createElement('option');
                 option.value = key;
                 option.textContent = niceName;
-                savedSessionsSelect.appendChild(option);
+                savedSelect.appendChild(option);
             }
         }
     }
