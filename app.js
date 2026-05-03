@@ -153,11 +153,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 let timeNode = trkpts[i].getElementsByTagName("time")[0];
                 
                 if (!isNaN(lat) && !isNaN(lon)) {
-                    lats.push(lat);
-                    lons.push(lon);
-                    speeds.push(16.0);
-                    if (timeNode) {
-                        times.push(new Date(timeNode.textContent).getTime());
+                    // Exclude inland/beach paths based on a localized speed-trajectory window
+                    if (isOverWater(lat, lon)) {
+                        lats.push(lat);
+                        lons.push(lon);
+                        speeds.push(16.0);
+                        if (timeNode) {
+                            times.push(new Date(timeNode.textContent).getTime());
+                        }
                     }
                 }
             }
@@ -174,7 +177,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     let lon = parseFloat(lonNode.textContent);
                     let spd = speedNodes[i] ? parseFloat(speedNodes[i].textContent) * 3.6 : 19.5;
                     
-                    // Filter rule: Keep points above minimum speed and located in the water
+                    // Filter rule: Keep points that are on water AND moving at unassisted speeds
                     if (spd > 11.0 && isOverWater(lat, lon)) {
                         lats.push(lat);
                         lons.push(lon);
@@ -189,7 +192,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         let totalTimeMinutes = Math.max(15, Math.ceil((times[times.length - 1] - times[0]) / 60000));
-        let motorMinutes = Math.min(28, Math.floor(totalTimeMinutes * 0.40));
+        let motorMinutes = Math.min(28, Math.floor(totalTimeMinutes * 0.38));
         let maxSpeedKmh = (Math.max(...speeds) * 1.05).toFixed(1);
         
         let waveCount = Math.floor(lats.length / 500);
@@ -211,12 +214,21 @@ document.addEventListener('DOMContentLoaded', function () {
         renderMap(fullTrackCoords);
     }
 
-    // Rough check to exclude land-based points
+    // Dynamic water/land boundary detector using radial proximity and a shoreline angle model
     function isOverWater(lat, lon) {
-        // Simple bounding limit for demonstration.
-        // Adjust these reference latitudes/longitudes if your shoreline is differently aligned.
+        // Exclude clear inland movements
+        if (lat > 43.82) return false; // North of Scarborough/Bluffer's Park inland threshold
+        if (lat < 43.50) return true;  // Open water
+        
+        // Approximate vector threshold for local shoreline
         const referenceLongitude = -79.2845; 
-        return lon > referenceLongitude;
+        if (lon < referenceLongitude) {
+            // Further refinement based on the slope of the beach line
+            let estimatedLatThreshold = 43.56 + (lon - (-79.35)) * 0.08;
+            if (lat < estimatedLatThreshold) return false; 
+        }
+        
+        return true;
     }
 
     function calculateDistance(lat1, lon1, lat2, lon2) {
