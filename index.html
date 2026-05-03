@@ -4,7 +4,148 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FoilDrive Tracker</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        :root {
+            --bg-color: #FAFAFA;
+            --card-bg: #FFFFFF;
+            --text-color: #111111;
+            --secondary-text: #666666;
+            --accent-color: #000000;
+            --border-color: #E6E6E6;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 1px rgba(0,0,0,0.02);
+            --radius: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 60px 20px;
+        }
+
+        .container {
+            max-width: 840px;
+            margin: 0 auto;
+        }
+
+        header {
+            margin-bottom: 55px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 400;
+            letter-spacing: -0.6px;
+            margin-bottom: 6px;
+        }
+
+        .subtitle {
+            font-size: 11px;
+            color: var(--secondary-text);
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+        }
+
+        .upload-section {
+            margin-bottom: 40px;
+        }
+
+        .drop-zone {
+            border: 1.5px solid var(--border-color);
+            padding: 65px 20px;
+            text-align: center;
+            background-color: var(--card-bg);
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.25s ease-in-out;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .drop-zone:hover {
+            border-color: var(--accent-color);
+            transform: translateY(-1px);
+        }
+
+        .drop-zone p {
+            font-size: 14px;
+            color: var(--secondary-text);
+        }
+
+        .file-label {
+            color: var(--text-color);
+            text-decoration: underline;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .dashboard-hidden {
+            display: none !important;
+        }
+
+        #dashboard {
+            display: grid;
+            gap: 32px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 20px;
+        }
+
+        .metric-card {
+            background-color: var(--card-bg);
+            padding: 24px 28px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.2s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .metric-card h3 {
+            font-size: 11px;
+            text-transform: uppercase;
+            color: var(--secondary-text);
+            margin-bottom: 10px;
+            letter-spacing: 0.8px;
+            font-weight: 600;
+        }
+
+        .metric-card p {
+            font-size: 28px;
+            font-weight: 400;
+            letter-spacing: -0.5px;
+            color: var(--text-color);
+        }
+
+        .map-box {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            height: 380px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--secondary-text);
+            font-size: 12px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            box-shadow: var(--shadow-sm);
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -15,7 +156,7 @@
 
         <section class="upload-section">
             <div class="drop-zone" id="dropZone">
-                <p>Drag and drop your Garmin GPX/TCX files here, or <label for="fileInput" class="file-label">browse</label></p>
+                <p>Drag and drop your Garmin .TCX or .GPX files here, or <label for="fileInput" class="file-label">browse</label></p>
                 <input type="file" id="fileInput" accept=".gpx, .tcx" style="display: none;">
             </div>
         </section>
@@ -34,10 +175,23 @@
                     <h3>Max Speed</h3>
                     <p id="maxSpeed">-- km/h</p>
                 </div>
+                <div class="metric-card">
+                    <h3>Wave Count</h3>
+                    <p id="waveCount">0</p>
+                </div>
+                <div class="metric-card">
+                    <h3>Longest Wave</h3>
+                    <p id="longestWave">-- m</p>
+                </div>
+                <div class="metric-card">
+                    <h3>Fastest Wave</h3>
+                    <p id="fastestWave">-- km/h</p>
+                </div>
             </div>
 
             <div id="mapContainer" class="map-box">
-                </div>
+                <p>Downwind Wave Track Visualization</p>
+            </div>
         </section>
     </div>
 
