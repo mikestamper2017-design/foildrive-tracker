@@ -24,7 +24,6 @@ body {
     padding: 24px 16px;
     max-width: 768px;
     margin: 0 auto;
-    /* Prevent mobile pull-to-refresh and elastic scrolling */
     overscroll-behavior-y: contain; 
 }
 
@@ -64,7 +63,6 @@ body {
     border-color: var(--text-primary);
 }
 
-/* Native, transparent file input overlay */
 .drop-zone input[type="file"] {
     position: absolute;
     top: 0;
