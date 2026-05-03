@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AuraFoil | Unassisted Session Tracker</title>
+    <title>Swellpath | Precision Session Analytics</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
@@ -12,7 +12,7 @@
 <body>
 
     <header class="app-header">
-        <div class="logo">AuraFoil</div>
+        <div class="logo">Swellpath</div>
         <div class="subtitle">Precision Unassisted Wave Tracking</div>
     </header>
 
@@ -39,11 +39,11 @@
                 <span class="label">Wave Count</span>
                 <span id="waveCount" class="value">-</span>
             </div>
-            <div class="metric-card">
+            <div class="metric-card longest-wave-card">
                 <span class="label">Longest Wave</span>
                 <span id="longestWave" class="value">-</span>
             </div>
-            <div class="metric-card">
+            <div class="metric-card fastest-wave-card">
                 <span class="label">Fastest Wave</span>
                 <span id="fastestWave" class="value">-</span>
             </div>
@@ -56,7 +56,7 @@
                 <span class="toggle-text">Only show wave runs</span>
             </label>
 
-            <button id="shareBtn" class="action-btn">Copy Summary</button>
+            <button id="shareBtn" class="action-btn">Copy Session to Clipboard</button>
         </div>
 
         <div id="mapContainer" class="map-container"></div>
