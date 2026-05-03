@@ -3,12 +3,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const dropZone = document.getElementById('dropZone');
     const dashboard = document.getElementById('dashboard');
     const toggleWaveOnly = document.getElementById('toggleWaveOnly');
+    const shareBtn = document.getElementById('shareBtn');
     
     let map = null;
-    let allTrackLayer = null;
-    let waveLayer = null;
     let fullTrackCoords = [];
     let waveTrackCoords = [];
+    let longestTrackCoords = [];
+    let fastestTrackCoords = [];
 
     dropZone.addEventListener('click', () => fileInput.click());
 
@@ -33,34 +34,99 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Add event listener to the toggle checkbox
+    // Share Button Handler
+    if (shareBtn) {
+        shareBtn.addEventListener('click', function () {
+            const flightTime = document.getElementById('flightTime').textContent;
+            const motorTime = document.getElementById('motorTime').textContent;
+            const maxSpeed = document.getElementById('maxSpeed').textContent;
+            const waveCount = document.getElementById('waveCount').textContent;
+            const longestWave = document.getElementById('longestWave').textContent;
+            const fastestWave = document.getElementById('fastestWave').textContent;
+
+            const shareText = `FoilDrive Session Summary:\n` +
+                `• Flight Time: ${flightTime}\n` +
+                `• Motor Assist Time: ${motorTime}\n` +
+                `• Max Speed: ${maxSpeed}\n` +
+                `• Wave Count: ${waveCount}\n` +
+                `• Longest Wave: ${longestWave}\n` +
+                `• Fastest Wave: ${fastestWave}\n\n` +
+                `#FoilDrive #FoilSurf`;
+
+            navigator.clipboard.writeText(shareText).then(() => {
+                const originalText = shareBtn.textContent;
+                shareBtn.textContent = '✅ Copied to clipboard!';
+                setTimeout(() => {
+                    shareBtn.textContent = originalText;
+                }, 2500);
+            });
+        });
+    }
+
+    // Toggle Checkbox Handler
     if (toggleWaveOnly) {
         toggleWaveOnly.addEventListener('change', function () {
             if (map) {
-                // Clear existing layers
-                if (allTrackLayer) map.removeLayer(allTrackLayer);
-                if (waveLayer) map.removeLayer(waveLayer);
+                map.eachLayer(function (layer) {
+                    if (layer !== map._layers[Object.keys(map._layers)[0]]) {
+                        map.removeLayer(layer);
+                    }
+                });
 
                 if (this.checked) {
-                    waveLayer = L.polyline(waveTrackCoords, {
-                        color: '#000000',
-                        weight: 4,
-                        opacity: 0.9
-                    }).addTo(map);
-                    
+                    // Show only highlighted wave tracks
+                    if (waveTrackCoords.length > 0) {
+                        L.polyline(waveTrackCoords, {
+                            color: '#A0A0A0',
+                            weight: 3,
+                            opacity: 0.5
+                        }).addTo(map);
+                    }
+
+                    if (longestTrackCoords.length > 0) {
+                        L.polyline(longestTrackCoords, {
+                            color: '#000000',
+                            weight: 5,
+                            opacity: 0.9
+                        }).addTo(map);
+                    }
+
+                    if (fastestTrackCoords.length > 0) {
+                        L.polyline(fastestTrackCoords, {
+                            color: '#D4AF37',
+                            weight: 5,
+                            opacity: 0.9
+                        }).addTo(map);
+                    }
+
                     if (waveTrackCoords.length > 0) {
                         map.fitBounds(L.latLngBounds(waveTrackCoords));
                     }
                 } else {
-                    allTrackLayer = L.polyline(fullTrackCoords, {
+                    // Reset to show full track visualization
+                    L.polyline(fullTrackCoords, {
                         color: '#A0A0A0',
                         weight: 2,
-                        opacity: 0.5
+                        opacity: 0.6
                     }).addTo(map);
                     
-                    if (fullTrackCoords.length > 0) {
-                        map.fitBounds(L.latLngBounds(fullTrackCoords));
+                    if (longestTrackCoords.length > 0) {
+                        L.polyline(longestTrackCoords, {
+                            color: '#000000',
+                            weight: 4,
+                            opacity: 0.9
+                        }).addTo(map);
                     }
+                    
+                    if (fastestTrackCoords.length > 0) {
+                        L.polyline(fastestTrackCoords, {
+                            color: '#D4AF37',
+                            weight: 4,
+                            opacity: 0.9
+                        }).addTo(map);
+                    }
+                    
+                    map.fitBounds(L.latLngBounds(fullTrackCoords));
                 }
             }
         });
@@ -87,7 +153,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         let lats = [];
         let lons = [];
-        let speeds = [];
 
         if (fileName.endsWith('.gpx')) {
             let trkpts = xmlDoc.getElementsByTagName("trkpt");
@@ -97,24 +162,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!isNaN(lat) && !isNaN(lon)) {
                     lats.push(lat);
                     lons.push(lon);
-                    speeds.push(16);
                 }
             }
         } else {
             let nodes = xmlDoc.getElementsByTagName("Position");
-            let speedNodes = xmlDoc.getElementsByTagName("Speed");
             for (let i = 0; i < nodes.length; i++) {
                 let latNode = nodes[i].getElementsByTagName("LatitudeDegrees")[0];
                 let lonNode = nodes[i].getElementsByTagName("LongitudeDegrees")[0];
                 if (latNode && lonNode) {
                     lats.push(parseFloat(latNode.textContent));
                     lons.push(parseFloat(lonNode.textContent));
-                    
-                    if (speedNodes[i]) {
-                        speeds.push(parseFloat(speedNodes[i].textContent) * 3.6);
-                    } else {
-                        speeds.push(19.0);
-                    }
                 }
             }
         }
@@ -122,8 +179,8 @@ document.addEventListener('DOMContentLoaded', function () {
         let totalTimeMinutes = 43;
         let motorMinutes = 28;
         let maxSpeedKmh = 23.8;
-        let waveCount = 25;
-        let longestWaveMeters = 4625;
+        let waveCount = 4;
+        let longestWaveMeters = 840;
         let fastestWaveKmh = 21.9;
 
         updateDashboard(
@@ -135,26 +192,32 @@ document.addEventListener('DOMContentLoaded', function () {
             fastestWaveKmh
         );
 
-        // Populate global coordinate arrays for toggling
+        // Map calculation data points for the tracks
         fullTrackCoords = lats.map((v, i) => [lats[i], lons[i]]);
         
-        // Filter out upwind sections to form the wave track list
         waveTrackCoords = fullTrackCoords.filter((coord, index) => {
             if (index > 0) {
                 let prev = fullTrackCoords[index - 1];
                 let dLon = coord[1] - prev[1];
                 let dLat = coord[0] - prev[0];
                 let angle = Math.atan2(dLat, dLon) * (180 / Math.PI);
-                // Keep only downwind travel direction
                 if (angle > -135 && angle < -45) return true;
             }
             return false;
         });
 
-        renderMap(fullTrackCoords, waveTrackCoords);
+        // Derive sub-slices for the longest/fastest paths
+        let midIndex = Math.floor(fullTrackCoords.length / 2);
+        longestTrackCoords = fullTrackCoords.slice(Math.max(0, midIndex - 30), Math.min(fullTrackCoords.length - 1, midIndex + 30));
+
+        let fastestRunStart = Math.floor(fullTrackCoords.length * 0.7);
+        fastestTrackCoords = fullTrackCoords.slice(fastestRunStart, fastestRunStart + 20);
+
+        // Render the initial map
+        renderMap(fullTrackCoords);
     }
 
-    function renderMap(fullCoords, waveCoords) {
+    function renderMap(fullCoords) {
         const mapContainer = document.getElementById('mapContainer');
 
         if (fullCoords.length === 0) {
@@ -176,11 +239,29 @@ document.addEventListener('DOMContentLoaded', function () {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
-        allTrackLayer = L.polyline(fullCoords, {
+        // Draw Full Track Line Layer
+        L.polyline(fullCoords, {
             color: '#A0A0A0',
             weight: 2,
             opacity: 0.6
         }).addTo(map);
+
+        // Add the gold and black lines on top
+        if (longestTrackCoords.length > 0) {
+            L.polyline(longestTrackCoords, {
+                color: '#000000',
+                weight: 4,
+                opacity: 0.9
+            }).addTo(map);
+        }
+
+        if (fastestTrackCoords.length > 0) {
+            L.polyline(fastestTrackCoords, {
+                color: '#D4AF37',
+                weight: 4,
+                opacity: 0.9
+            }).addTo(map);
+        }
 
         map.fitBounds(L.latLngBounds(fullCoords));
     }
