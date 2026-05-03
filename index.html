@@ -22,7 +22,7 @@
                 <span class="desktop-text">Drop your .tcx or .gpx file here</span>
                 <span class="mobile-text">Tap to Upload File</span>
             </span>
-            <input type="file" id="fileInput" accept=".tcx,.gpx">
+            <input type="file" id="fileInput" accept=".tcx,.gpx,.TCX,.GPX,application/gpx+xml,application/vnd.garmin.tcx+xml">
         </div>
 
         <div class="saved-panel">
@@ -57,6 +57,10 @@
             <div class="metric-card fastest-wave-card">
                 <span class="label">Fastest Wave</span>
                 <span id="fastestWave" class="value">-</span>
+            </div>
+            <div class="metric-card">
+                <span class="label">Total Distance</span>
+                <span id="totalDistance" class="value">-</span>
             </div>
         </div>
 
