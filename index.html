@@ -8,6 +8,52 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <link rel="stylesheet" href="app.css">
+    
+    <style>
+        .instructions-panel {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .instructions-panel h3 {
+            font-size: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+
+        .instructions-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .instructions-step {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .instructions-step strong {
+            color: var(--text-primary);
+            font-size: 13px;
+        }
+
+        @media (max-width: 768px) {
+            .instructions-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+        }
+    </style>
 </head>
 <body>
 
@@ -17,6 +63,25 @@
     </header>
 
     <main class="container">
+        
+        <div class="instructions-panel">
+            <h3>Import Your Session in Seconds</h3>
+            <div class="instructions-grid">
+                <div class="instructions-step">
+                    <strong>1. Export from Strava</strong>
+                    <span>Open your activity on Strava (web or mobile), click the three dots, and select "Export GPX".</span>
+                </div>
+                <div class="instructions-step">
+                    <strong>2. Save to your phone/desktop</strong>
+                    <span>Save the file directly to your device storage or files directory.</span>
+                </div>
+                <div class="instructions-step">
+                    <strong>3. Upload to Swellpath</strong>
+                    <span>Tap or drop the file into the box below to instantly calculate your session metrics.</span>
+                </div>
+            </div>
+        </div>
+
         <div id="dropZone" class="drop-zone">
             <span class="drop-zone-text">
                 <span class="desktop-text">Drop your .tcx or .gpx file here</span>
