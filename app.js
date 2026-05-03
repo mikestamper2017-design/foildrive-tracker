@@ -13,7 +13,6 @@ document.addEventListener('DOMContentLoaded', function () {
     let longestTrackCoords = [];
     let fastestTrackCoords = [];
     
-    // Populate saved sessions
     populateSavedSessions();
 
     if (fileInput) {
@@ -24,7 +23,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Drag and drop event listeners
     if (dropZone) {
         dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
@@ -32,12 +30,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         dropZone.addEventListener('dragleave', () => {
-            dropZone.style.borderColor = '#E0E0E0';
+            dropZone.style.borderColor = '#E6E6E6';
         });
 
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
-            dropZone.style.borderColor = '#E0E0E0';
+            dropZone.style.borderColor = '#E6E6E6';
             if (e.dataTransfer.files.length > 0) {
                 handleFile(e.dataTransfer.files[0]);
             }
@@ -155,7 +153,21 @@ document.addEventListener('DOMContentLoaded', function () {
         for (let i = 0; i < localStorage.length; i++) {
             let key = localStorage.key(i);
             if (key.startsWith('Swellpath_')) {
-                let niceName = key.replace('Swellpath_', '').replaceAll('_', ' ');
+                let parts = key.split('_');
+                let niceName = '';
+                if (parts.length >= 3) {
+                    let timestamp = parseInt(parts[1]);
+                    let dateObj = new Date(timestamp);
+                    let dateString = dateObj.toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' });
+                    let timeString = dateObj.toLocaleTimeString('en-CA', { hour: '2-digit', minute: '2-digit' });
+                    
+                    // Fallback to the human-readable part or text token
+                    let token = parts.slice(2).join(' ');
+                    niceName = `${dateString} @ ${timeString} - ${token}`;
+                } else {
+                    niceName = key.replace('Swellpath_', '').replaceAll('_', ' ');
+                }
+
                 let option = document.createElement('option');
                 option.value = key;
                 option.textContent = niceName;
@@ -220,7 +232,6 @@ document.addEventListener('DOMContentLoaded', function () {
                             let rawSpeedMps = dist / timeDiff;
                             let calculatedSpeedKmh = rawSpeedMps * 3.6;
 
-                            // Compensate if the unit is read as knots instead of km/h
                             if (calculatedSpeedKmh > 55) {
                                 calculatedSpeedKmh = calculatedSpeedKmh / 1.852;
                             }
@@ -260,7 +271,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // Apply a Low-Pass Window Smoothing filter
         if (speeds.length > 5) {
             let smoothedSpeeds = [];
             for (let i = 0; i < speeds.length; i++) {
@@ -390,7 +400,6 @@ document.addEventListener('DOMContentLoaded', function () {
             return false;
         });
 
-        let longestRunSegment = [];
         let currentRun = [];
         let allRuns = [];
 
