@@ -13,17 +13,17 @@ document.addEventListener('DOMContentLoaded', function () {
     let longestTrackCoords = [];
     let fastestTrackCoords = [];
     
-    // Load existing sessions from storage
+    // Populate saved sessions
     populateSavedSessions();
 
-    dropZone.addEventListener('click', () => fileInput.click());
-
+    // The hidden input handles the tap/click automatically
     fileInput.addEventListener('change', function (e) {
         if (e.target.files.length > 0) {
             handleFile(e.target.files[0]);
         }
     });
 
+    // Drag and drop event listeners
     dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
         dropZone.style.borderColor = '#000000';
@@ -41,22 +41,24 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    loadSessionBtn.addEventListener('click', function () {
-        const selectedKey = savedSelect.value;
-        if (selectedKey) {
-            const dataString = localStorage.getItem(selectedKey);
-            if (dataString) {
-                try {
-                    const sessionData = JSON.parse(dataString);
-                    restoreDashboardData(sessionData);
-                } catch (err) {
-                    alert('Error loading session data.');
+    if (loadSessionBtn) {
+        loadSessionBtn.addEventListener('click', function () {
+            const selectedKey = savedSelect.value;
+            if (selectedKey) {
+                const dataString = localStorage.getItem(selectedKey);
+                if (dataString) {
+                    try {
+                        const sessionData = JSON.parse(dataString);
+                        restoreDashboardData(sessionData);
+                    } catch (err) {
+                        alert('Error loading session data.');
+                    }
                 }
+            } else {
+                alert('Please select a saved session first.');
             }
-        } else {
-            alert('Please select a saved session first.');
-        }
-    });
+        });
+    }
 
     if (shareBtn) {
         shareBtn.addEventListener('click', function () {
@@ -282,7 +284,6 @@ document.addEventListener('DOMContentLoaded', function () {
             lons: lons,
         };
 
-        // Cache session
         let shortName = originalName.replace('.tcx', '').replace('.gpx', '').substring(0, 20);
         localStorage.setItem(`Swellpath_${Date.now()}_${shortName}`, JSON.stringify(dataObject));
 
@@ -419,5 +420,16 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         map.fitBounds(L.latLngBounds(fullCoords));
+    }
+
+    function updateDashboard(flightTime, motorMinutes, maxSpeed, waveCount, longestWave, fastestWave) {
+        document.getElementById('flightTime').textContent = `${flightTime} min`;
+        document.getElementById('motorTime').textContent = `${motorMinutes} min`;
+        document.getElementById('maxSpeed').textContent = `${maxSpeed} km/h`;
+        document.getElementById('waveCount').textContent = waveCount;
+        document.getElementById('longestWave').textContent = `${longestWave} m`;
+        document.getElementById('fastestWave').textContent = `${fastestWave} km/h`;
+
+        document.getElementById('dashboard').classList.remove('dashboard-hidden');
     }
 });
