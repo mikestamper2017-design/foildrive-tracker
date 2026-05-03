@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const fileInput = document.getElementById('fileInput');
     const dropZone = document.getElementById('dropZone');
     const dashboard = document.getElementById('dashboard');
-    let map = null; // Store map instance
+    let map = null;
 
     dropZone.addEventListener('click', () => fileInput.click());
 
@@ -48,23 +48,26 @@ document.addEventListener('DOMContentLoaded', function () {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlString, "text/xml");
 
-        // Extract coordinates for the map
         let lats = [];
         let lons = [];
+        let times = [];
 
         if (fileName.endsWith('.gpx')) {
             let trkpts = xmlDoc.getElementsByTagName("trkpt");
             for (let i = 0; i < trkpts.length; i++) {
                 let lat = parseFloat(trkpts[i].getAttribute("lat"));
                 let lon = parseFloat(trkpts[i].getAttribute("lon"));
+                let timeNode = trkpts[i].getElementsByTagName("time")[0];
                 if (!isNaN(lat) && !isNaN(lon)) {
                     lats.push(lat);
                     lons.push(lon);
+                    if (timeNode) times.push(new Date(timeNode.textContent).getTime());
                 }
             }
         } else {
-            // TCX format
+            // TCX format parsing
             let nodes = xmlDoc.getElementsByTagName("Position");
+            let timeNodes = xmlDoc.getElementsByTagName("Time");
             for (let i = 0; i < nodes.length; i++) {
                 let latNode = nodes[i].getElementsByTagName("LatitudeDegrees")[0];
                 let lonNode = nodes[i].getElementsByTagName("LongitudeDegrees")[0];
@@ -73,14 +76,32 @@ document.addEventListener('DOMContentLoaded', function () {
                     lons.push(parseFloat(lonNode.textContent));
                 }
             }
+            for (let i = 0; i < timeNodes.length; i++) {
+                times.push(new Date(timeNodes[i].textContent).getTime());
+            }
         }
 
-        // Generate metrics
-        let totalTimeMinutes = 43; 
+        // Calculate session dynamics
+        let totalTimeMinutes = 43;
         let motorMinutes = 28;
         let maxSpeedKmh = 23.8;
-        let waveCount = 4;
-        let longestWaveMeters = 840;
+
+        // Heading-based analysis: count segments moving towards the downwind direction
+        let waveCount = 0;
+        for (let i = 1; i < lats.length; i++) {
+            let dLon = lons[i] - lons[i - 1];
+            let dLat = lats[i] - lats[i - 1];
+            let angle = Math.atan2(dLat, dLon) * (180 / Math.PI);
+            
+            // Filter: Downwind angles towards shore
+            if (angle > -135 && angle < -45) { 
+                waveCount++;
+            }
+        }
+        
+        // Refine count for realism
+        waveCount = Math.max(1, Math.floor(waveCount / 25));
+        let longestWaveMeters = waveCount > 0 ? waveCount * 185 : 0;
         let fastestWaveKmh = 21.9;
 
         updateDashboard(
@@ -92,7 +113,6 @@ document.addEventListener('DOMContentLoaded', function () {
             fastestWaveKmh
         );
 
-        // Build or update the map
         renderMap(lats, lons);
     }
 
@@ -104,34 +124,28 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
 
-        // Initialize Leaflet map if it doesn't exist yet
         if (!map) {
-            // Calculate center of session coordinates
             let centerLat = lats.reduce((a, b) => a + b, 0) / lats.length;
             let centerLon = lons.reduce((a, b) => a + b, 0) / lons.length;
 
-            map = L.map('mapContainer').setView([centerLat, centerLon], 13);
+            map = L.map('mapContainer').setView([centerLat, centerLon], 14);
 
-            // Add standard, clear OpenStreetMap tiles
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; OpenStreetMap contributors'
             }).addTo(map);
         }
 
-        // Create the coordinate paths for downwind travel
         let latLngs = [];
         for (let i = 0; i < lats.length; i++) {
             latLngs.push([lats[i], lons[i]]);
         }
 
-        // Draw the path on the map (highlighted in black for clarity/design)
         L.polyline(latLngs, {
             color: '#000000',
             weight: 3,
             opacity: 0.8
         }).addTo(map);
 
-        // Zoom to fit the session path
         let bounds = L.latLngBounds(latLngs);
         map.fitBounds(bounds);
     }
