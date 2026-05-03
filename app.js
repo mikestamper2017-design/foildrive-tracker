@@ -2,7 +2,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const fileInput = document.getElementById('fileInput');
     const dropZone = document.getElementById('dropZone');
     const dashboard = document.getElementById('dashboard');
+    const toggleWaveOnly = document.getElementById('toggleWaveOnly');
+    
     let map = null;
+    let allTrackLayer = null;
+    let waveLayer = null;
+    let fullTrackCoords = [];
+    let waveTrackCoords = [];
 
     dropZone.addEventListener('click', () => fileInput.click());
 
@@ -27,9 +33,41 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // Add event listener to the toggle checkbox
+    if (toggleWaveOnly) {
+        toggleWaveOnly.addEventListener('change', function () {
+            if (map) {
+                // Clear existing layers
+                if (allTrackLayer) map.removeLayer(allTrackLayer);
+                if (waveLayer) map.removeLayer(waveLayer);
+
+                if (this.checked) {
+                    waveLayer = L.polyline(waveTrackCoords, {
+                        color: '#000000',
+                        weight: 4,
+                        opacity: 0.9
+                    }).addTo(map);
+                    
+                    if (waveTrackCoords.length > 0) {
+                        map.fitBounds(L.latLngBounds(waveTrackCoords));
+                    }
+                } else {
+                    allTrackLayer = L.polyline(fullTrackCoords, {
+                        color: '#A0A0A0',
+                        weight: 2,
+                        opacity: 0.5
+                    }).addTo(map);
+                    
+                    if (fullTrackCoords.length > 0) {
+                        map.fitBounds(L.latLngBounds(fullTrackCoords));
+                    }
+                }
+            }
+        });
+    }
+
     function handleFile(file) {
         if (!file) return;
-
         const reader = new FileReader();
         const fileName = file.name.toLowerCase();
 
@@ -40,7 +78,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 alert('Unsupported file type. Please use a .tcx or .gpx file.');
             }
         };
-
         reader.readAsText(file);
     }
 
@@ -60,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (!isNaN(lat) && !isNaN(lon)) {
                     lats.push(lat);
                     lons.push(lon);
-                    speeds.push(15);
+                    speeds.push(16);
                 }
             }
         } else {
@@ -98,24 +135,40 @@ document.addEventListener('DOMContentLoaded', function () {
             fastestWaveKmh
         );
 
-        renderDistinctTracks(lats, lons, speeds);
+        // Populate global coordinate arrays for toggling
+        fullTrackCoords = lats.map((v, i) => [lats[i], lons[i]]);
+        
+        // Filter out upwind sections to form the wave track list
+        waveTrackCoords = fullTrackCoords.filter((coord, index) => {
+            if (index > 0) {
+                let prev = fullTrackCoords[index - 1];
+                let dLon = coord[1] - prev[1];
+                let dLat = coord[0] - prev[0];
+                let angle = Math.atan2(dLat, dLon) * (180 / Math.PI);
+                // Keep only downwind travel direction
+                if (angle > -135 && angle < -45) return true;
+            }
+            return false;
+        });
+
+        renderMap(fullTrackCoords, waveTrackCoords);
     }
 
-    function renderDistinctTracks(lats, lons, speeds) {
+    function renderMap(fullCoords, waveCoords) {
         const mapContainer = document.getElementById('mapContainer');
 
-        if (lats.length === 0) {
+        if (fullCoords.length === 0) {
             mapContainer.innerHTML = "<p>No track coordinates found.</p>";
             return;
         }
 
         if (map) {
-            map.remove(); // Reset the previous instance
+            map.remove();
             map = null;
         }
 
-        let centerLat = lats.reduce((a, b) => a + b, 0) / lats.length;
-        let centerLon = lons.reduce((a, b) => a + b, 0) / lons.length;
+        let centerLat = fullCoords[Math.floor(fullCoords.length / 2)][0];
+        let centerLon = fullCoords[Math.floor(fullCoords.length / 2)][1];
 
         map = L.map('mapContainer').setView([centerLat, centerLon], 14);
 
@@ -123,38 +176,13 @@ document.addEventListener('DOMContentLoaded', function () {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
-        // Segment the data into distinct paths
-        let allCoordinates = lats.map((v, i) => [lats[i], lons[i]]);
-
-        // Base Track (Upwind and Motor Assist)
-        L.polyline(allCoordinates, {
-            color: '#A0A0A0', // Muted, neutral gray background line
+        allTrackLayer = L.polyline(fullCoords, {
+            color: '#A0A0A0',
             weight: 2,
             opacity: 0.6
         }).addTo(map);
 
-        // Highlight the longest wave segment in high-contrast black
-        let midIndex = Math.floor(allCoordinates.length / 2);
-        let longestWaveCoordinates = allCoordinates.slice(Math.max(0, midIndex - 30), Math.min(allCoordinates.length - 1, midIndex + 30));
-
-        L.polyline(longestWaveCoordinates, {
-            color: '#000000', // Solid black for longest run
-            weight: 5,
-            opacity: 0.9
-        }).addTo(map);
-
-        // Highlight fastest wave segment with an accent
-        let fastestRunStart = Math.floor(allCoordinates.length * 0.7);
-        let fastestWaveCoordinates = allCoordinates.slice(fastestRunStart, fastestRunStart + 20);
-
-        L.polyline(fastestWaveCoordinates, {
-            color: '#D4AF37', // Gold highlight for fastest run
-            weight: 5,
-            opacity: 0.9
-        }).addTo(map);
-
-        let bounds = L.latLngBounds(allCoordinates);
-        map.fitBounds(bounds);
+        map.fitBounds(L.latLngBounds(fullCoords));
     }
 
     function updateDashboard(flightTime, motorTime, maxSpeed, waveCount, longestWave, fastestWave) {
