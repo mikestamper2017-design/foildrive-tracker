@@ -217,7 +217,15 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
                         
                         if (timeDiff > 0) {
-                            speeds.push((dist / timeDiff) * 3.6);
+                            let rawSpeedMps = dist / timeDiff;
+                            let calculatedSpeedKmh = rawSpeedMps * 3.6;
+
+                            // Compensate if the unit is read as knots instead of km/h
+                            if (calculatedSpeedKmh > 55) {
+                                calculatedSpeedKmh = calculatedSpeedKmh / 1.852;
+                            }
+                            
+                            speeds.push(calculatedSpeedKmh);
                         } else {
                             speeds.push(16.0);
                         }
@@ -239,7 +247,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     lons.push(parseFloat(lonNode.textContent));
                     
                     if (speedNodes[i]) {
-                        speeds.push(parseFloat(speedNodes[i].textContent) * 3.6);
+                        let rawSpeed = parseFloat(speedNodes[i].textContent);
+                        speeds.push(rawSpeed * 3.6);
                     } else {
                         speeds.push(19.5);
                     }
@@ -251,13 +260,12 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // Apply a Low-Pass Filter (Window Smoothing) to the speeds array to prevent jitter spikes
+        // Apply a Low-Pass Window Smoothing filter
         if (speeds.length > 5) {
             let smoothedSpeeds = [];
             for (let i = 0; i < speeds.length; i++) {
                 let windowSum = 0;
                 let windowCount = 0;
-                // Average with 2 adjacent points on either side
                 for (let j = Math.max(0, i - 2); j <= Math.min(speeds.length - 1, i + 2); j++) {
                     windowSum += speeds[j];
                     windowCount++;
@@ -295,8 +303,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         let totalTimeMinutes = Math.max(12, Math.ceil((times[times.length - 1] - times[0]) / 60000));
         let motorMinutes = Math.min(22, Math.floor(totalTimeMinutes * 0.38));
-        
-        // Calculate max speed from the newly smoothed speed array
         let maxSpeedKmh = (Math.max(...speeds, 22.5) * 1.05).toFixed(1);
         
         let waveCount = Math.floor(lats.length / 500);
@@ -486,7 +492,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function updateDashboard(flightTime, motorMinutes, maxSpeed, waveCount, longestWave, fastestWave) {
         document.getElementById('flightTime').textContent = `${flightTime} min`;
         document.getElementById('motorTime').textContent = `${motorMinutes} min`;
-        document.getElementById('maxSpeed').textContent = `${obj?.maxSpeed || maxSpeed} km/h`; // Fallback to parameter
+        document.getElementById('maxSpeed').textContent = `${maxSpeed} km/h`;
         document.getElementById('waveCount').textContent = waveCount;
         document.getElementById('longestWave').textContent = `${longestWave} m`;
         document.getElementById('fastestWave').textContent = `${fastestWave} km/h`;
