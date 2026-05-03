@@ -67,7 +67,6 @@ document.addEventListener('DOMContentLoaded', function () {
     if (toggleWaveOnly) {
         toggleWaveOnly.addEventListener('change', function () {
             if (map) {
-                // Clear all layers
                 map.eachLayer(function (layer) {
                     if (layer !== map._layers[Object.keys(map._layers)[0]]) {
                         map.removeLayer(layer);
@@ -75,7 +74,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
 
                 if (this.checked) {
-                    // Show ONLY wave run coordinates - No full session grey lines or assisted runs
                     if (waveTrackCoords.length > 0) {
                         L.polyline(waveTrackCoords, {
                             color: '#000000',
@@ -94,7 +92,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         map.fitBounds(L.latLngBounds(waveTrackCoords));
                     }
                 } else {
-                    // Restore both full track background and wave runs
                     L.polyline(fullTrackCoords, {
                         color: '#A0A0A0',
                         weight: 2,
@@ -173,11 +170,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 let latNode = nodes[i].getElementsByTagName("LatitudeDegrees")[0];
                 let lonNode = nodes[i].getElementsByTagName("LongitudeDegrees")[0];
                 if (latNode && lonNode) {
+                    let lat = parseFloat(latNode.textContent);
+                    let lon = parseFloat(lonNode.textContent);
                     let spd = speedNodes[i] ? parseFloat(speedNodes[i].textContent) * 3.6 : 19.5;
                     
-                    if (spd > 11.0) {
-                        lats.push(parseFloat(latNode.textContent));
-                        lons.push(parseFloat(lonNode.textContent));
+                    // Filter rule: Keep points above minimum speed and located in the water
+                    if (spd > 11.0 && isOverWater(lat, lon)) {
+                        lats.push(lat);
+                        lons.push(lon);
                         speeds.push(spd);
 
                         if (timeNodes[i]) {
@@ -189,7 +189,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         let totalTimeMinutes = Math.max(15, Math.ceil((times[times.length - 1] - times[0]) / 60000));
-        let motorMinutes = Math.min(28, Math.floor(totalTimeMinutes * 0.45));
+        let motorMinutes = Math.min(28, Math.floor(totalTimeMinutes * 0.40));
         let maxSpeedKmh = (Math.max(...speeds) * 1.05).toFixed(1);
         
         let waveCount = Math.floor(lats.length / 500);
@@ -209,6 +209,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         TrackCoordsCalculation(lats, lons);
         renderMap(fullTrackCoords);
+    }
+
+    // Rough check to exclude land-based points
+    function isOverWater(lat, lon) {
+        // Simple bounding limit for demonstration.
+        // Adjust these reference latitudes/longitudes if your shoreline is differently aligned.
+        const referenceLongitude = -79.2845; 
+        return lon > referenceLongitude;
     }
 
     function calculateDistance(lat1, lon1, lat2, lon2) {
