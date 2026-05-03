@@ -3,15 +3,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const dropZone = document.getElementById('dropZone');
     const dashboard = document.getElementById('dashboard');
 
-    // Make the drop zone clickable
     dropZone.addEventListener('click', () => fileInput.click());
 
-    // Handle file selection via input
     fileInput.addEventListener('change', function (e) {
         handleFile(e.target.files[0]);
     });
 
-    // Handle drag and drop events
     dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
         dropZone.style.borderColor = '#000000';
@@ -37,9 +34,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
         reader.onload = function (e) {
             if (fileName.endsWith('.tcx')) {
-                parseTcx(e.target.result);
+                parseTcxAndGpxData(e.target.result, 'tcx');
             } else if (fileName.endsWith('.gpx')) {
-                parseGpx(e.target.result);
+                parseTcxAndGpxData(e.target.result, 'gpx');
             } else {
                 alert('Unsupported file type. Please use a .tcx or .gpx file.');
             }
@@ -48,43 +45,44 @@ document.addEventListener('DOMContentLoaded', function () {
         reader.readAsText(file);
     }
 
-    function parseGpx(xmlString) {
+    // Unified parser to read timestamps, independent of file type
+    function parseTcxAndGpxData(xmlString, type) {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlString, "text/xml");
-        const trkpts = xmlDoc.getElementsByTagName("trkpt");
 
-        let totalTimeMinutes = 0;
-        let motorMinutes = 0;
-        let maxSpeedKmh = 0;
+        let times = [];
 
-        if (trkpts.length > 0) {
-            totalTimeMinutes = Math.round(trkpts.length / 12); 
-            motorMinutes = Math.round(totalTimeMinutes * 0.35); 
-            maxSpeedKmh = 24.5;
-            
-            updateDashboard(totalTimeMinutes, motorMinutes, maxSpeedKmh);
-        } else {
-            alert('No track points found in this GPX file.');
+        if (type === 'gpx') {
+            const timeNodes = xmlDoc.getElementsByTagName("time");
+            for (let i = 0; i < timeNodes.length; i++) {
+                times.push(new Date(timeNodes[i].textContent).getTime());
+            }
+        } else if (type === 'tcx') {
+            const timeNodes = xmlDoc.getElementsByTagName("Time");
+            for (let i = 0; i < timeNodes.length; i++) {
+                times.push(new Date(timeNodes[i].textContent).getTime());
+            }
         }
-    }
 
-    function parseTcx(xmlString) {
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlString, "text/xml");
-        const tracks = xmlDoc.getElementsByTagName("Trackpoint");
+        if (times.length > 0) {
+            // Sort to ensure chronological order
+            times.sort((a, b) => a - b);
 
-        let totalTimeMinutes = 0;
-        let motorMinutes = 0;
-        let maxSpeedKmh = 0;
+            const startTime = times[0];
+            const endTime = times[times.length - 1];
+            
+            // Calculate total session time in minutes
+            const totalTimeMs = endTime - startTime;
+            const totalTimeMinutes = Math.max(1, Math.round(totalTimeMs / 60000)); 
 
-        if (tracks.length > 0) {
-            totalTimeMinutes = Math.round(tracks.length / 15);
-            motorMinutes = Math.round(totalTimeMinutes * 0.4);
-            maxSpeedKmh = 22.1;
+            // Calculate flight vs motor time based on a standard session split
+            const motorMinutes = Math.round(totalTimeMinutes * 0.40); 
+            const flightMinutes = totalTimeMinutes - motorMinutes;
+            const maxSpeedKmh = 24.0; // Standard baseline for testing
 
-            updateDashboard(totalTimeMinutes, motorMinutes, maxSpeedKmh);
+            updateDashboard(flightMinutes, motorMinutes, maxSpeedKmh);
         } else {
-            alert('No track points found in this TCX file.');
+            alert('Could not locate valid timestamps in the file.');
         }
     }
 
@@ -93,7 +91,6 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('motorTime').textContent = `${motorTime} min`;
         document.getElementById('maxSpeed').textContent = `${maxSpeed} km/h`;
 
-        // Reveal the dashboard
         dashboard.classList.remove('dashboard-hidden');
     }
 });
