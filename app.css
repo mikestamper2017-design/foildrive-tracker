@@ -3,7 +3,7 @@
     --card-bg: #FFFFFF;
     --text-primary: #111111;
     --text-secondary: #888888;
-    --accent-color: #D4AF37;
+    --accent-gold: #D4AF37;
     --border-color: #E0E0E0;
     --border-radius: 8px;
 }
@@ -79,6 +79,15 @@ body {
     border: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
+}
+
+/* Custom indicator shadings */
+.longest-wave-card {
+    border-top: 4px solid #111111;
+}
+
+.fastest-wave-card {
+    border-top: 4px solid var(--accent-gold);
 }
 
 .metric-card .label {
