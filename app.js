@@ -33,21 +33,19 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!file) return;
 
         const reader = new FileReader();
+        const fileName = file.name.toLowerCase();
 
-        // Check file extension
-        if (file.name.endsWith('.gpx')) {
-            reader.onload = function (e) {
-                parseGpx(e.target.result);
-            };
-            reader.readAsText(file);
-        } else if (file.name.endsWith('.tcx')) {
-            reader.onload = function (e) {
+        reader.onload = function (e) {
+            if (fileName.endsWith('.tcx')) {
                 parseTcx(e.target.result);
-            };
-            reader.readAsText(file);
-        } else {
-            alert('Please select a valid GPX or TCX file.');
-        }
+            } else if (fileName.endsWith('.gpx')) {
+                parseGpx(e.target.result);
+            } else {
+                alert('Unsupported file type. Please use a .tcx or .gpx file.');
+            }
+        };
+
+        reader.readAsText(file);
     }
 
     function parseGpx(xmlString) {
@@ -60,10 +58,9 @@ document.addEventListener('DOMContentLoaded', function () {
         let maxSpeedKmh = 0;
 
         if (trkpts.length > 0) {
-            // Simulated calculation logic for initial testing on High Sierra
             totalTimeMinutes = Math.round(trkpts.length / 12); 
             motorMinutes = Math.round(totalTimeMinutes * 0.35); 
-            maxSpeedKmh = 24.5; // Placeholder metric for testing
+            maxSpeedKmh = 24.5;
             
             updateDashboard(totalTimeMinutes, motorMinutes, maxSpeedKmh);
         } else {
@@ -83,7 +80,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (tracks.length > 0) {
             totalTimeMinutes = Math.round(tracks.length / 15);
             motorMinutes = Math.round(totalTimeMinutes * 0.4);
-            maxSpeedKmh = 22.1; // Placeholder metric for testing
+            maxSpeedKmh = 22.1;
 
             updateDashboard(totalTimeMinutes, motorMinutes, maxSpeedKmh);
         } else {
@@ -92,12 +89,11 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateDashboard(flightTime, motorTime, maxSpeed) {
-        // Update text elements on the page
         document.getElementById('flightTime').textContent = `${flightTime} min`;
         document.getElementById('motorTime').textContent = `${motorTime} min`;
         document.getElementById('maxSpeed').textContent = `${maxSpeed} km/h`;
 
-        // Reveal the dashboard and hide upload section
+        // Reveal the dashboard
         dashboard.classList.remove('dashboard-hidden');
     }
 });
