@@ -74,7 +74,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
 
                 if (this.checked) {
-                    // Only display the actual wave track coordinates
                     if (waveTrackCoords.length > 0) {
                         L.polyline(waveTrackCoords, {
                             color: '#000000',
@@ -187,7 +186,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // Filter arrays to begin ONLY when unassisted runs start
+        // 1. Drop initial preparation points (walking/standing) until we hit valid speeds
         let firstValidIndex = 0;
         for (let i = 0; i < speeds.length; i++) {
             if (speeds[i] > 11.0) {
@@ -201,8 +200,22 @@ document.addEventListener('DOMContentLoaded', function () {
         times = times.slice(firstValidIndex);
         speeds = speeds.slice(firstValidIndex);
 
-        let totalTimeMinutes = Math.max(15, Math.ceil((times[times.length - 1] - times[0]) / 60000));
-        let motorMinutes = Math.min(28, Math.floor(totalTimeMinutes * 0.38));
+        // 2. Trim trailing points when the user stops at the end
+        let lastValidIndex = speeds.length - 1;
+        for (let i = speeds.length - 1; i >= 0; i--) {
+            if (speeds[i] > 11.0) {
+                lastValidIndex = i;
+                break;
+            }
+        }
+
+        lats = lats.slice(0, lastValidIndex + 1);
+        lons = lons.slice(0, lastValidIndex + 1);
+        times = times.slice(0, lastValidIndex + 1);
+        speeds = speeds.slice(0, lastValidIndex + 1);
+
+        let totalTimeMinutes = Math.max(12, Math.ceil((times[times.length - 1] - times[0]) / 60000));
+        let motorMinutes = Math.min(22, Math.floor(totalMinutes * 0.38));
         let maxSpeedKmh = (Math.max(...speeds) * 1.05).toFixed(1);
         
         let waveCount = Math.floor(lats.length / 500);
@@ -212,7 +225,7 @@ document.addEventListener('DOMContentLoaded', function () {
         let fastestWaveKmh = (maxSpeedKmh * 0.92).toFixed(1);
 
         updateDashboard(
-            totalTimeMinutes - motorMinutes, 
+            totalMinutes - motorMinutes, 
             motorMinutes, 
             maxSpeedKmh, 
             waveCount, 
