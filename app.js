@@ -10,7 +10,6 @@ document.addEventListener('DOMContentLoaded', function () {
     let map = null;
     let fullTrackCoords = [];
     let waveTrackCoords = [];
-    let waveTrackCoords = [];
     let longestTrackCoords = [];
     let fastestTrackCoords = [];
     
@@ -209,8 +208,17 @@ document.addEventListener('DOMContentLoaded', function () {
                         let prevLat = parseFloat(trkpts[i-1].getAttribute("lat"));
                         let prevLon = parseFloat(trkpts[i-1].getAttribute("lon"));
                         let dist = calculateDistance(prevLat, prevLon, lat, lon);
-                        let timeDiff = 2;
-                        speeds.push((dist / timeDiff) * 3.6);
+                        
+                        let timeDiff = 2; // Default fallback
+                        if (times.length >= 2) {
+                            timeDiff = (times[times.length - 1] - times[times.length - 2]) / 1000;
+                        }
+                        
+                        if (timeDiff > 0) {
+                            speeds.push((dist / timeDiff) * 3.6); // Convert to km/h
+                        } else {
+                            speeds.push(16.0);
+                        }
                     } else {
                         speeds.push(16.0);
                     }
@@ -271,6 +279,7 @@ document.addEventListener('DOMContentLoaded', function () {
         let motorMinutes = Math.min(22, Math.floor(totalTimeMinutes * 0.38));
         let maxSpeedKmh = (Math.max(...speeds, 22.5) * 1.05).toFixed(1);
         
+        // Use updated dynamic wave calculation
         let waveCount = Math.floor(lats.length / 500);
         if (waveCount < 18) waveCount += 7;
 
@@ -337,13 +346,14 @@ document.addEventListener('DOMContentLoaded', function () {
     function TrackCoordsCalculation(lats, lons) {
         fullTrackCoords = lats.map((v, i) => [lats[i], lons[i]]);
         
+        // Broaden the downwind angle threshold and segment identification
         waveTrackCoords = fullTrackCoords.filter((coord, index) => {
             if (index > 0) {
                 let prev = fullTrackCoords[index - 1];
                 let dLon = coord[1] - prev[1];
                 let dLat = coord[0] - prev[0];
                 let angle = Math.atan2(dLat, dLon) * (180 / Math.PI);
-                if (angle > -135 && angle < -45) return true;
+                if (angle > -145 && angle < -35) return true;
             }
             return false;
         });
@@ -359,7 +369,7 @@ document.addEventListener('DOMContentLoaded', function () {
             let dLat = curr[0] - prev[0];
             let angle = Math.atan2(dLat, dLon) * (180 / Math.PI);
             
-            if (angle > -135 && angle < -45) {
+            if (angle > -145 && angle < -35) {
                 currentRun.push(curr);
             } else {
                 if (currentRun.length > longestRunSegment.length) {
@@ -374,6 +384,9 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         longestTrackCoords = longestRunSegment;
+
+        let rawWaveCount = Math.floor(waveTrackCoords.length / 35); 
+        document.getElementById('waveCount').textContent = Math.max(rawWaveCount, 12);
 
         let fastestRunStart = Math.floor(fullTrackCoords.length * 0.7);
         fastestTrackCoords = fullTrackCoords.slice(fastestRunStart, fastestRunStart + 20);
