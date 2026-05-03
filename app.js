@@ -4,17 +4,19 @@ document.addEventListener('DOMContentLoaded', function () {
     const dashboard = document.getElementById('dashboard');
     const toggleWaveOnly = document.getElementById('toggleWaveOnly');
     const shareBtn = document.getElementById('shareBtn');
+    const savedSessionsSelect = document.getElementById('savedSessions');
+    const loadSessionBtn = document.getElementById('loadSessionBtn');
     
     let map = null;
     let fullTrackCoords = [];
     let waveTrackCoords = [];
     let longestTrackCoords = [];
     let fastestTrackCoords = [];
+    
+    // Load existing sessions from storage
+    populateSavedSessions();
 
-    // Clicking the drop zone natively triggers the hidden input
-    dropZone.addEventListener('click', () => {
-        fileInput.click();
-    });
+    dropZone.addEventListener('click', () => fileInput.click());
 
     fileInput.addEventListener('change', function (e) {
         if (e.target.files.length > 0) {
@@ -22,7 +24,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Drag and drop event listeners
     dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
         dropZone.style.borderColor = '#000000';
@@ -37,6 +38,23 @@ document.addEventListener('DOMContentLoaded', function () {
         dropZone.style.borderColor = '#E0E0E0';
         if (e.dataTransfer.files.length > 0) {
             handleFile(e.dataTransfer.files[0]);
+        }
+    });
+
+    loadSessionBtn.addEventListener('click', function () {
+        const selectedId = savedSessionsSelect.value;
+        if (selectedId) {
+            const dataString = localStorage.getItem(selectedId);
+            if (dataString) {
+                try {
+                    const sessionData = JSON.parse(dataString);
+                    restoreDashboardData(sessionData);
+                } catch (err) {
+                    alert('Error loading session');
+                }
+            }
+        } else {
+            alert('Select a session from the dropdown to load');
         }
     });
 
@@ -124,6 +142,20 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function populateSavedSessions() {
+        savedSessionsSelect.innerHTML = '<option value="">-- Saved Sessions --</option>';
+        for (let i = 0; i < localStorage.length; i++) {
+            let key = localStorage.key(i);
+            if (key.startsWith('Swellpath_')) {
+                let niceName = key.replace('Swellpath_', '').replaceAll('_', ' ');
+                let option = document.createElement('option');
+                option.value = key;
+                option.textContent = niceName;
+                savedSessionsSelect.appendChild(option);
+            }
+        }
+    }
+
     function handleFile(file) {
         if (!file) return;
         const reader = new FileReader();
@@ -131,7 +163,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         reader.onload = function (e) {
             if (fileName.endsWith('.tcx') || fileName.endsWith('.gpx')) {
-                parseAndMapData(e.target.result, fileName);
+                parseAndMapData(e.target.result, fileName, file.name);
             } else {
                 alert('Unsupported file type. Please use a .tcx or .gpx file.');
             }
@@ -140,7 +172,7 @@ document.addEventListener('DOMContentLoaded', function () {
         reader.readAsText(file);
     }
 
-    function parseAndMapData(xmlString, fileName) {
+    function parseAndMapData(xmlString, fileName, originalName) {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlString, "text/xml");
 
@@ -238,6 +270,21 @@ document.addEventListener('DOMContentLoaded', function () {
         let longestWaveMeters = (waveCount * 185).toFixed(0);
         let fastestWaveKmh = (maxSpeedKmh * 0.92).toFixed(1);
 
+        const dataObject = {
+            flightTime: (totalTimeMinutes - motorMinutes),
+            motorTime: motorMinutes,
+            maxSpeed: maxSpeedKmh,
+            waveCount: waveCount,
+            longestWave: longestWaveMeters,
+            fastestWave: fastestWaveKmh,
+            lats: lats,
+            lons: lons,
+        };
+
+        // Cache session
+        let shortName = originalName.replace('.tcx', '').replace('.gpx', '').substring(0, 20);
+        localStorage.setItem(`Swellpath_${Date.now()}_${shortName}`, JSON.stringify(dataObject));
+
         updateDashboard(
             totalTimeMinutes - motorMinutes, 
             motorMinutes, 
@@ -247,7 +294,22 @@ document.addEventListener('DOMContentLoaded', function () {
             fastestWaveKmh
         );
 
+        populateSavedSessions();
         TrackCoordsCalculation(lats, lons);
+        renderMap(fullTrackCoords);
+    }
+
+    function restoreDashboardData(obj) {
+        document.getElementById('flightTime').textContent = `${obj.flightTime} min`;
+        document.getElementById('motorTime').textContent = `${obj.motorTime} min`;
+        document.getElementById('maxSpeed').textContent = `${obj.maxSpeed} km/h`;
+        document.getElementById('waveCount').textContent = obj.waveCount;
+        document.getElementById('longestWave').textContent = `${obj.longestWave} m`;
+        document.getElementById('fastestWave').textContent = `${obj.fastestWave} km/h`;
+
+        document.getElementById('dashboard').classList.remove('dashboard-hidden');
+
+        TrackCoordsCalculation(obj.lats, obj.lons);
         renderMap(fullTrackCoords);
     }
 
@@ -356,16 +418,5 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         map.fitBounds(L.latLngBounds(fullCoords));
-    }
-
-    function updateDashboard(flightTime, motorMinutes, maxSpeed, waveCount, longestWave, fastestWave) {
-        document.getElementById('flightTime').textContent = `${flightTime} min`;
-        document.getElementById('motorTime').textContent = `${motorMinutes} min`;
-        document.getElementById('maxSpeed').textContent = `${maxSpeed} km/h`;
-        document.getElementById('waveCount').textContent = waveCount;
-        document.getElementById('longestWave').textContent = `${longestWave} m`;
-        document.getElementById('fastestWave').textContent = `${fastestWave} km/h`;
-
-        document.getElementById('dashboard').classList.remove('dashboard-hidden');
     }
 });
