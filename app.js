@@ -10,36 +10,40 @@ document.addEventListener('DOMContentLoaded', function () {
     let map = null;
     let fullTrackCoords = [];
     let waveTrackCoords = [];
+    let waveTrackCoords = [];
     let longestTrackCoords = [];
     let fastestTrackCoords = [];
     
     // Populate saved sessions
     populateSavedSessions();
 
-    // The hidden input handles the tap/click automatically
-    fileInput.addEventListener('change', function (e) {
-        if (e.target.files.length > 0) {
-            handleFile(e.target.files[0]);
-        }
-    });
+    if (fileInput) {
+        fileInput.addEventListener('change', function (e) {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+    }
 
     // Drag and drop event listeners
-    dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        dropZone.style.borderColor = '#000000';
-    });
+    if (dropZone) {
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#000000';
+        });
 
-    dropZone.addEventListener('dragleave', () => {
-        dropZone.style.borderColor = '#E0E0E0';
-    });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.style.borderColor = '#E0E0E0';
+        });
 
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.style.borderColor = '#E0E0E0';
-        if (e.dataTransfer.files.length > 0) {
-            handleFile(e.dataTransfer.files[0]);
-        }
-    });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '#E0E0E0';
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+    }
 
     if (loadSessionBtn) {
         loadSessionBtn.addEventListener('click', function () {
