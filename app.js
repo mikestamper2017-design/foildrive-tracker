@@ -11,7 +11,10 @@ document.addEventListener('DOMContentLoaded', function () {
     let longestTrackCoords = [];
     let fastestTrackCoords = [];
 
-    dropZone.addEventListener('click', () => fileInput.click());
+    // Clicking the drop zone natively triggers the hidden input
+    dropZone.addEventListener('click', () => {
+        fileInput.click();
+    });
 
     fileInput.addEventListener('change', function (e) {
         if (e.target.files.length > 0) {
@@ -19,6 +22,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // Drag and drop event listeners
     dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
         dropZone.style.borderColor = '#000000';
