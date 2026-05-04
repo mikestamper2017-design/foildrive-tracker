@@ -10,16 +10,27 @@
     <meta property="og:image" content="https://swellpath.app/assets/swellpath-og-image.png">
     <meta property="og:url" content="https://swellpath.app">
     
-    <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
-    <link rel="manifest" href="/site.webmanifest">
+    <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="./assets/favicon-16x16.png">
+    <link rel="manifest" href="./site.webmanifest">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <link rel="stylesheet" href="app.css">
     
     <style>
+        .logo-container {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .brand-logo {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+        }
+
         .instructions-panel {
             background: var(--card-bg);
             border-radius: var(--border-radius);
@@ -68,6 +79,9 @@
 <body>
 
     <header class="app-header">
+        <div class="logo-container">
+            <img src="./assets/apple-touch-icon.png" alt="Swellpath Logo" class="brand-logo">
+        </div>
         <div class="logo" style="font-size: 32px; font-weight: 700; letter-spacing: -1px;">Swellpath</div>
         <div class="subtitle" style="font-size: 11px; letter-spacing: 0.5px; text-transform: uppercase; margin-top: 6px;">Precision Unassisted Wave Tracking</div>
     </header>
@@ -82,7 +96,7 @@
                     <span>Open your activity on Strava (web or mobile), click the three dots, and select "Export GPX".</span>
                 </div>
                 <div class="instructions-step">
-                    <strong>2. Save to your phone/desktop</strong>
+                    <strong>2. Save to your device</strong>
                     <span>Save the file directly to your device storage or files directory.</span>
                 </div>
                 <div class="instructions-step">
