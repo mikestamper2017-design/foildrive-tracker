@@ -1,74 +1,147 @@
-/* Custom Properties & Minimalism */
+/* ==========================================================================
+   Swellpath - Precision Session Analytics
+   ========================================================================== */
+
 :root {
-    --bg-color: #FAFAFA;
-    --card-bg: #FFFFFF;
-    --text-primary: #111111;
-    --text-secondary: #717171;
-    --border-color: #E6E6E6;
-    --border-radius: 16px;
-    --accent-color: #D4AF37;
-    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    --shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.05);
+    --bg-color: #0A0A0A;
+    --card-bg: #121212;
+    --text-primary: #FFFFFF;
+    --text-secondary: #8A8A8E;
+    --border-color: #2C2C2E;
+    --accent-color: #D4AF37; /* Gold accent */
+    --silver-color: #E5E5E7;
+    --border-radius: 12px;
 }
 
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
 }
 
 body {
     background-color: var(--bg-color);
     color: var(--text-primary);
-    font-family: var(--font-family);
+    padding: 0 0 40px 0;
     line-height: 1.5;
-    padding: 40px 16px 24px 16px;
-    max-width: 768px;
-    margin: 0 auto;
-    overscroll-behavior-y: contain; 
 }
 
-/* Header */
+/* Premium Header Banner */
 .app-header {
+    background: linear-gradient(135deg, #111111 0%, #1a1a1a 100%);
+    padding: 40px 20px 32px 20px;
     text-align: center;
-    margin-bottom: 40px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 32px;
 }
 
-.app-header .logo {
-    font-size: 32px;
+.logo-container {
+    margin-bottom: 18px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.brand-logo {
+    width: 68px;
+    height: 68px;
+    object-fit: contain;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.logo {
+    font-size: 34px;
     font-weight: 700;
     letter-spacing: -1px;
-    color: var(--text-primary);
+    color: #FFFFFF;
 }
 
-.app-header .subtitle {
+.subtitle {
     font-size: 11px;
+    letter-spacing: 1.5px;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-secondary);
-    margin-top: 4px;
+    color: #888888;
+    margin-top: 8px;
 }
 
-/* Upload Drop Zone */
-.drop-zone {
-    position: relative;
-    padding: 56px 24px;
-    border: 1.5px solid var(--border-color);
-    border-radius: var(--border-radius);
-    text-align: center;
+/* Main Container Layout */
+.container {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+/* Instructions Panel */
+.instructions-panel {
     background: var(--card-bg);
-    cursor: pointer;
-    transition: all 0.2s ease-in-out;
+    border-radius: var(--border-radius);
+    padding: 24px;
+    border: 1px solid var(--border-color);
     margin-bottom: 24px;
-    box-shadow: var(--shadow);
+    text-align: center;
+}
+
+.instructions-panel h3 {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+}
+
+.instructions-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-align: left;
+}
+
+.instructions-step {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.instructions-step strong {
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+/* Drop Zone */
+.drop-zone {
+    border: 2px dashed var(--border-color);
+    border-radius: var(--border-radius);
+    background: var(--card-bg);
+    padding: 48px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+    margin-bottom: 20px;
+    position: relative;
 }
 
 .drop-zone:hover {
-    border-color: var(--text-primary);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    border-color: var(--accent-color);
+    background: #141414;
 }
 
-.drop-zone input[type="file"] {
+.drop-zone-text {
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.mobile-text {
+    display: none;
+}
+
+#fileInput {
     position: absolute;
     top: 0;
     left: 0;
@@ -78,71 +151,58 @@ body {
     cursor: pointer;
 }
 
-.drop-zone-text {
-    font-size: 14px;
-    color: var(--text-primary);
-    pointer-events: none;
-}
-
-.mobile-text {
-    display: none;
-}
-
-/* Saved Sessions Dropdown Card */
+/* Saved Sessions Panel */
 .saved-panel {
-    display: flex;
-    gap: 16px;
-    align-items: center;
     background: var(--card-bg);
-    padding: 16px 20px;
-    border-radius: var(--border-radius);
     border: 1px solid var(--border-color);
-    box-shadow: var(--shadow);
+    border-radius: var(--border-radius);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
     margin-bottom: 24px;
 }
 
 .saved-panel label {
-    font-size: 10px;
+    font-size: 12px;
     text-transform: uppercase;
+    letter-spacing: 0.5px;
     color: var(--text-secondary);
-    letter-spacing: 1px;
-    font-weight: 600;
 }
 
-.saved-panel select {
-    flex-grow: 1;
-    padding: 10px 14px;
+select {
+    flex: 1;
+    background: #0A0A0A;
+    color: var(--text-primary);
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    background: var(--bg-color);
+    padding: 8px 12px;
     font-size: 13px;
-    color: var(--text-primary);
     outline: none;
-    cursor: pointer;
 }
 
 .action-btn {
     background: var(--text-primary);
-    color: var(--card-bg);
+    color: #000000;
     border: none;
     border-radius: 8px;
-    padding: 10px 20px;
-    font-size: 12px;
+    padding: 8px 16px;
+    font-size: 13px;
     font-weight: 600;
-    letter-spacing: 0.5px;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background 0.2s ease;
 }
 
 .action-btn:hover {
-    background: #222222;
+    background: var(--silver-color);
 }
 
-/* Dashboard Analytics Layout */
+/* Dashboard Analytics */
 .dashboard {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
     margin-bottom: 24px;
 }
 
@@ -152,35 +212,35 @@ body {
 
 .metric-card {
     background: var(--card-bg);
-    border-radius: var(--border-radius);
-    padding: 18px 16px;
     border: 1px solid var(--border-color);
-    box-shadow: var(--shadow);
+    border-radius: var(--border-radius);
+    padding: 16px 12px;
     display: flex;
     flex-direction: column;
+    gap: 6px;
 }
 
 .metric-card .label {
-    font-size: 10px;
+    font-size: 11px;
     text-transform: uppercase;
-    color: var(--text-secondary);
-    margin-bottom: 6px;
     letter-spacing: 0.5px;
-    font-weight: 500;
+    color: var(--text-secondary);
 }
 
 .metric-card .value {
     font-size: 20px;
-    font-weight: 600;
-    letter-spacing: -0.5px;
+    font-weight: 700;
 }
 
 .longest-wave-card {
-    border-top: 4px solid var(--text-primary);
+    grid-column: span 2;
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.08) 0%, rgba(0,0,0,0) 100%);
+    border-color: rgba(212, 175, 55, 0.3);
 }
 
 .fastest-wave-card {
-    border-top: 4px solid var(--accent-color);
+    grid-column: span 2;
+    background: linear-gradient(135deg, rgba(229, 229, 231, 0.05) 0%, rgba(0,0,0,0) 100%);
 }
 
 /* Controls Wrapper */
@@ -188,20 +248,20 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 24px;
-    flex-wrap: wrap;
-    gap: 16px;
     background: var(--card-bg);
-    padding: 16px 20px;
-    border-radius: var(--border-radius);
     border: 1px solid var(--border-color);
-    box-shadow: var(--shadow);
+    border-radius: var(--border-radius);
+    padding: 16px 20px;
+    margin-bottom: 24px;
 }
 
 .switch-container {
     display: flex;
     align-items: center;
+    gap: 10px;
     cursor: pointer;
+    font-size: 13px;
+    color: var(--text-secondary);
 }
 
 .switch-container input {
@@ -211,74 +271,63 @@ body {
 .slider {
     position: relative;
     display: inline-block;
-    width: 44px;
-    height: 24px;
+    width: 38px;
+    height: 22px;
     background-color: var(--border-color);
-    border-radius: 24px;
-    transition: 0.3s;
+    border-radius: 20px;
+    transition: 0.2s;
 }
 
 .slider:before {
     position: absolute;
     content: "";
-    height: 18px;
-    width: 18px;
+    height: 16px;
+    width: 16px;
     left: 3px;
     bottom: 3px;
     background-color: white;
     border-radius: 50%;
-    transition: 0.3s;
+    transition: 0.2s;
 }
 
 input:checked + .slider {
-    background-color: var(--text-primary);
+    background-color: var(--accent-color);
 }
 
 input:checked + .slider:before {
-    transform: translateX(20px);
+    transform: translateX(16px);
 }
 
-.toggle-text {
-    margin-left: 12px;
-    font-size: 13px;
-    color: var(--text-secondary);
-    font-weight: 400;
-}
-
-/* Map View */
+/* Map Container */
 .map-container {
+    height: 380px;
     width: 100%;
-    height: 400px;
-    background-color: #EFEFEF;
     border-radius: var(--border-radius);
     border: 1px solid var(--border-color);
-    box-shadow: var(--shadow);
+    background: var(--card-bg);
     overflow: hidden;
 }
 
-/* Mobile Breakpoint */
+/* Responsive Overrides */
 @media (max-width: 768px) {
     .dashboard {
         grid-template-columns: repeat(2, 1fr);
     }
     
+    .longest-wave-card, .fastest-wave-card {
+        grid-column: span 2;
+    }
+    
     .desktop-text {
         display: none;
     }
-
+    
     .mobile-text {
         display: block;
-        font-size: 15px;
-        font-weight: 500;
     }
-
-    .controls-wrapper {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .saved-panel {
-        flex-direction: column;
-        align-items: stretch;
+    
+    .instructions-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
     }
 }
