@@ -331,3 +331,15 @@ input:checked + .slider:before {
         gap: 16px;
     }
 }
+@media (max-width: 768px) {
+    .saved-panel {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+    
+    .saved-panel select, 
+    .saved-panel .action-btn {
+        width: 100%;
+    }
+}
