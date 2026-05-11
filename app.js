@@ -22,39 +22,42 @@ document.addEventListener('DOMContentLoaded', function () {
 
     populateSavedSessions();
 
-    // --- 1. REFRESH-READY TOGGLES ---
+    // --- 1. DIRECTIONAL & VIEW TOGGLES ---
     elements.toggleWaveOnly.addEventListener('change', () => {
         if (state.currentData) renderMap();
     });
 
     elements.lockHeadingBtn.addEventListener('click', function() {
         if (state.fullTrack.length < 10) return;
+
         if (state.lockedHeading !== null) {
             state.lockedHeading = null;
             this.textContent = `Lock Outbound`;
             this.style.background = 'transparent';
             this.style.color = '#FFFFFF';
         } else {
+            // Capture the first 30 points to determine the "Taxi Out" direction
             const start = state.fullTrack[0];
             const end = state.fullTrack[Math.min(30, state.fullTrack.length - 1)];
             state.lockedHeading = calculateBearing(start[0], start[1], end[0], end[1]);
+            
             this.textContent = `Locked: ${Math.round(state.lockedHeading)}°`;
             this.style.background = '#D4AF37';
             this.style.color = '#000';
         }
+        
         if (state.currentData) {
             calculateTracks(state.currentData);
             renderMap();
         }
     });
 
-    // --- 2. THE PHYSICS ENGINE (Threshold: 15km/h for Flight) ---
+    // --- 2. PHYSICS ENGINE (Threshold: 18km/h) ---
     function parseGPX(xmlString, fileName) {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlString, "text/xml");
         let lats = [], lons = [], times = [], speeds = [];
         
-        // Accurate Date Extraction
         let tNodes = xmlDoc.getElementsByTagName("time");
         let sessionDate = tNodes.length > 0 ? new Date(tNodes[0].textContent) : new Date();
 
@@ -78,20 +81,22 @@ document.addEventListener('DOMContentLoaded', function () {
             let diff = (times[i] - times[i-1]) / 1000;
             let s = diff > 0 ? (d/diff)*3.6 : 0;
             speeds.push(s);
-            if (s > 0 && s < 15.5) motorSec += diff;
-            else if (s >= 15.5) flightSec += diff;
+
+            // ADJUSTED: 18km/h strict threshold for Flight
+            if (s > 0 && s < 18) motorSec += diff;
+            else if (s >= 18) flightSec += diff;
         }
 
         const data = {
-            fileName: fileName.split('.')[0],
-            date: sessionDate.getTime(),
+            displayName: fileName.split('.')[0].replace(/_/g, ' ').replace(/-/g, ' '),
+            dateStr: sessionDate.toLocaleDateString('en-CA', {month:'short', day:'numeric'}),
             flightTime: Math.round(flightSec / 60),
             motorTime: Math.round(motorSec / 60),
             maxSpeed: Math.max(...speeds).toFixed(1),
             lats, lons, speeds, times
         };
 
-        let key = `Swellpath_${data.date}_${data.fileName}`;
+        let key = `Swellpath_${sessionDate.getTime()}`;
         localStorage.setItem(key, JSON.stringify(data));
         return key;
     }
@@ -105,22 +110,22 @@ document.addEventListener('DOMContentLoaded', function () {
 
         for (let i = 1; i < state.fullTrack.length; i++) {
             let prev = state.fullTrack[i-1], curr = state.fullTrack[i];
-            let d = calculateDistance(prev[0], prev[1], curr[0], curr[1]);
-            totalD += d;
+            totalD += calculateDistance(prev[0], prev[1], curr[0], curr[1]);
 
-            let brng = calculateBearing(prev[0], prev[1], curr[0], curr[1]);
-            let dLon = curr[1] - prev[1], dLat = curr[0] - prev[0];
-            let angle = Math.atan2(dLat, dLon) * (180 / Math.PI);
+            let currentBrng = calculateBearing(prev[0], prev[1], curr[0], curr[1]);
             
+            // DIRECTIONAL FILTER: Remove points heading in the same cone as the outbound lock
             let isOutbound = false;
             if (state.lockedHeading !== null) {
-                let diff = Math.abs(brng - state.lockedHeading);
-                if ((diff > 180 ? 360 - diff : diff) < 45) isOutbound = true;
+                let diff = Math.abs(currentBrng - state.lockedHeading);
+                let normalizedDiff = diff > 180 ? 360 - diff : diff;
+                if (normalizedDiff < 60) isOutbound = true; // 60-degree cone
             }
+
             if (!isOutbound) state.filteredTrack.push(curr);
 
-            let s = data.speeds ? data.speeds[i] : 20; 
-            if (angle > -145 && angle < -35 && !isOutbound && s > 14) {
+            // WAVE DETECTION: Must be Inbound (not Outbound) AND > 16km/h
+            if (!isOutbound && data.speeds[i] > 16) {
                 currentRun.push(curr);
             } else {
                 if (currentRun.length > 5) allRuns.push([...currentRun]);
@@ -157,20 +162,21 @@ document.addEventListener('DOMContentLoaded', function () {
         if (state.waveTracks.length > 0) L.polyline(state.waveTracks, {color: '#000', weight: 3}).addTo(state.map);
         if (state.longestTrack.length > 0) L.polyline(state.longestTrack, {color: '#D4AF37', weight: 5}).addTo(state.map);
 
-        const viewBounds = (showWavesOnly && state.waveTracks.length > 0) ? state.waveTracks : state.fullTrack;
-        state.map.fitBounds(L.latLngBounds(viewBounds));
+        const bounds = (showWavesOnly && state.waveTracks.length > 0) ? state.waveTracks : bgTrack;
+        state.map.fitBounds(L.latLngBounds(bounds));
     }
 
-    // --- 3. DASHBOARD & PERSISTENCE ---
+    // --- 3. SESSION MANAGEMENT (Fixed Naming) ---
     function populateSavedSessions() {
         elements.savedSelect.innerHTML = '<option value="">-- Saved Sessions --</option>';
-        let keys = Object.keys(localStorage).filter(k => k.startsWith('Swellpath_')).sort().reverse();
+        let keys = Object.keys(localStorage).filter(k => k.startsWith('Swellpath_'))
+                    .sort((a,b) => b.split('_')[1] - a.split('_')[1]);
+
         keys.forEach(key => {
-            let parts = key.split('_');
-            let d = new Date(parseInt(parts[1]));
+            const data = JSON.parse(localStorage.getItem(key));
             let opt = document.createElement('option');
             opt.value = key;
-            opt.textContent = `${d.toLocaleDateString('en-CA', {month:'short', day:'numeric'})} - ${parts[2]}`;
+            opt.textContent = `${data.dateStr} - ${data.displayName}`;
             elements.savedSelect.appendChild(opt);
         });
     }
@@ -181,16 +187,17 @@ document.addEventListener('DOMContentLoaded', function () {
         state.currentData = data;
         state.lockedHeading = null;
         
-        document.getElementById('flightTime').textContent = `${data.flightTime || 0} min`;
-        document.getElementById('motorTime').textContent = `${data.motorTime || 0} min`;
-        document.getElementById('maxSpeed').textContent = `${data.maxSpeed || 0} km/h`;
-        document.getElementById('fastestWave').textContent = `${data.maxSpeed || 0} km/h`;
+        document.getElementById('flightTime').textContent = `${data.flightTime} min`;
+        document.getElementById('motorTime').textContent = `${data.motorTime} min`;
+        document.getElementById('maxSpeed').textContent = `${data.maxSpeed} km/h`;
+        document.getElementById('fastestWave').textContent = `${data.maxSpeed} km/h`;
         
         calculateTracks(data);
         renderMap();
         elements.dashboard.classList.remove('dashboard-hidden');
     }
 
+    // --- 4. EVENTS ---
     elements.loadSessionBtn.addEventListener('click', () => {
         if (elements.savedSelect.value) loadSession(elements.savedSelect.value);
     });
@@ -210,7 +217,17 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // --- 4. HELPERS ---
+    if (elements.shareBtn) {
+        elements.shareBtn.addEventListener('click', function() {
+            const stats = `Swellpath Session:\n• Flight: ${document.getElementById('flightTime').textContent}\n• Motor: ${document.getElementById('motorTime').textContent}\n• Max: ${document.getElementById('maxSpeed').textContent}\n• Waves: ${document.getElementById('waveCount').textContent}\n#FoilDrive`;
+            navigator.clipboard.writeText(stats).then(() => {
+                this.textContent = "✅ Copied";
+                setTimeout(() => { this.textContent = "Share Session"; }, 2000);
+            });
+        });
+    }
+
+    // --- 5. HELPERS ---
     function calculateDistance(lat1, lon1, lat2, lon2) {
         const R = 6371e3, p = Math.PI/180;
         const a = 0.5 - Math.cos((lat2-lat1)*p)/2 + Math.cos(lat1*p)*Math.cos(lat2*p)*(1-Math.cos((lon2-lon1)*p))/2;
