@@ -1,5 +1,6 @@
 /* ==========================================================================
-   Swellpath - Precision Session Analytics (Dark Mode v1.2)
+   Swellpath - Precision Session Analytics (Dark Mode v1.3)
+   Horizontal Lock & Mobile Layout Fix
    ========================================================================== */
 
 :root {
@@ -26,6 +27,8 @@ body {
     color: var(--text-primary);
     padding: 0 0 40px 0;
     line-height: 1.6;
+    /* Prevents the entire page from swaying horizontally on mobile */
+    overflow-x: hidden; 
 }
 
 /* Premium Header Banner */
@@ -72,7 +75,10 @@ body {
 .container {
     max-width: 680px;
     margin: 0 auto;
-    padding: 0 20px;
+    padding: 0 15px; /* Reduced from 20px for better mobile fit */
+    width: 100%;
+    /* Key fix: ensures children don't expand the page width */
+    overflow-x: hidden; 
 }
 
 /* Instructions Panel */
@@ -140,21 +146,22 @@ body {
     display: none;
 }
 
-/* Saved Sessions Panel */
+/* Saved Sessions Panel - FLEX FIXES */
 .saved-panel {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
-    padding: 18px 20px;
+    padding: 18px 15px;
     display: flex;
+    flex-wrap: wrap; /* Allows wrapping if session name is too long */
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: 12px;
     margin-bottom: 24px;
 }
 
 .saved-panel label {
-    font-size: 12px;
+    font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--text-secondary);
@@ -163,6 +170,7 @@ body {
 
 select {
     flex: 1;
+    min-width: 150px; /* Prevents select from disappearing */
     background: #0A0A0A;
     color: var(--text-primary);
     border: 1px solid var(--border-color);
@@ -170,6 +178,8 @@ select {
     padding: 10px;
     font-size: 14px;
     outline: none;
+    /* Prevents the select box from pushing past the container width */
+    max-width: 100%; 
 }
 
 /* Shared Button Styles */
@@ -185,6 +195,7 @@ select {
     transition: all 0.2s ease;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    white-space: nowrap; /* Keeps text on one line */
 }
 
 .action-btn:hover {
@@ -237,7 +248,7 @@ select {
 }
 
 .metric-card .value {
-    font-size: 22px;
+    font-size: 20px; /* Slightly smaller for mobile safety */
     font-weight: 700;
 }
 
@@ -312,7 +323,7 @@ input:checked + .slider:before {
 
 /* Map Container */
 .map-container {
-    height: 420px;
+    height: 400px; /* Reduced slightly for smaller mobile viewport */
     width: 100%;
     border-radius: var(--border-radius);
     border: 1px solid var(--border-color);
@@ -351,5 +362,24 @@ input:checked + .slider:before {
 
     .instructions-grid {
         grid-template-columns: 1fr;
+    }
+
+    .saved-panel {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .saved-panel select, 
+    .saved-panel .action-btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .metric-card .value {
+        font-size: 18px;
+    }
+    .logo {
+        font-size: 32px;
     }
 }
