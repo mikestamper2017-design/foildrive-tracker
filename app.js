@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', function () {
-    // --- UI ELEMENTS ---
     const elements = {
         fileInput: document.getElementById('fileInput'),
         dropZone: document.getElementById('dropZone'),
@@ -7,7 +6,8 @@ document.addEventListener('DOMContentLoaded', function () {
         toggleWaveOnly: document.getElementById('toggleWaveOnly'),
         savedSelect: document.getElementById('savedSessions'),
         loadSessionBtn: document.getElementById('loadSessionBtn'),
-        lockHeadingBtn: document.getElementById('lockHeadingBtn')
+        lockHeadingBtn: document.getElementById('lockHeadingBtn'),
+        shareBtn: document.getElementById('shareBtn')
     };
 
     let state = {
@@ -16,21 +16,19 @@ document.addEventListener('DOMContentLoaded', function () {
         filteredTrack: [],
         waveTracks: [],
         longestTrack: [],
-        fastestTrack: [],
         currentData: null,
         lockedHeading: null
     };
 
     populateSavedSessions();
 
-    // --- 1. REACTIVE TOGGLES ---
+    // --- 1. REFRESH-READY TOGGLES ---
     elements.toggleWaveOnly.addEventListener('change', () => {
         if (state.currentData) renderMap();
     });
 
     elements.lockHeadingBtn.addEventListener('click', function() {
         if (state.fullTrack.length < 10) return;
-
         if (state.lockedHeading !== null) {
             state.lockedHeading = null;
             this.textContent = `Lock Outbound`;
@@ -44,21 +42,21 @@ document.addEventListener('DOMContentLoaded', function () {
             this.style.background = '#D4AF37';
             this.style.color = '#000';
         }
-        
         if (state.currentData) {
             calculateTracks(state.currentData);
             renderMap();
         }
     });
 
-    // --- 2. THE PHYSICS ENGINE (Thresholds Adjusted) ---
+    // --- 2. THE PHYSICS ENGINE (Threshold: 15km/h for Flight) ---
     function parseGPX(xmlString, fileName) {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlString, "text/xml");
-        let lats = [], lons = [], times = [], speeds = [], sessionDate = new Date();
-
+        let lats = [], lons = [], times = [], speeds = [];
+        
+        // Accurate Date Extraction
         let tNodes = xmlDoc.getElementsByTagName("time");
-        if (tNodes.length > 0) sessionDate = new Date(tNodes[0].textContent);
+        let sessionDate = tNodes.length > 0 ? new Date(tNodes[0].textContent) : new Date();
 
         let nodes = xmlDoc.getElementsByTagName("trkpt").length > 0 ? 
                     xmlDoc.getElementsByTagName("trkpt") : xmlDoc.getElementsByTagName("Trackpoint");
@@ -80,21 +78,20 @@ document.addEventListener('DOMContentLoaded', function () {
             let diff = (times[i] - times[i-1]) / 1000;
             let s = diff > 0 ? (d/diff)*3.6 : 0;
             speeds.push(s);
-            
-            // ADJUSTED: 16km/h threshold for Flight vs Motor
-            if (s > 0 && s < 16) motorSec += diff;
-            else if (s >= 16) flightSec += diff;
+            if (s > 0 && s < 15.5) motorSec += diff;
+            else if (s >= 15.5) flightSec += diff;
         }
 
         const data = {
-            name: fileName.replace('.gpx', '').replace('.tcx', ''),
+            fileName: fileName.split('.')[0],
+            date: sessionDate.getTime(),
             flightTime: Math.round(flightSec / 60),
             motorTime: Math.round(motorSec / 60),
             maxSpeed: Math.max(...speeds).toFixed(1),
             lats, lons, speeds, times
         };
 
-        let key = `Swellpath_${sessionDate.getTime()}_${data.name}`;
+        let key = `Swellpath_${data.date}_${data.fileName}`;
         localStorage.setItem(key, JSON.stringify(data));
         return key;
     }
@@ -103,11 +100,13 @@ document.addEventListener('DOMContentLoaded', function () {
         state.fullTrack = data.lats.map((v, i) => [data.lats[i], data.lons[i]]);
         state.filteredTrack = [];
         state.waveTracks = [];
+        state.longestTrack = [];
         let currentRun = [], allRuns = [], totalD = 0;
 
         for (let i = 1; i < state.fullTrack.length; i++) {
             let prev = state.fullTrack[i-1], curr = state.fullTrack[i];
-            totalD += calculateDistance(prev[0], prev[1], curr[0], curr[1]);
+            let d = calculateDistance(prev[0], prev[1], curr[0], curr[1]);
+            totalD += d;
 
             let brng = calculateBearing(prev[0], prev[1], curr[0], curr[1]);
             let dLon = curr[1] - prev[1], dLat = curr[0] - prev[0];
@@ -118,11 +117,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 let diff = Math.abs(brng - state.lockedHeading);
                 if ((diff > 180 ? 360 - diff : diff) < 45) isOutbound = true;
             }
-
             if (!isOutbound) state.filteredTrack.push(curr);
 
-            // WAVE DETECTION: Directional + Speed Threshold
-            if (angle > -145 && angle < -35 && !isOutbound && data.speeds[i] > 15) {
+            let s = data.speeds ? data.speeds[i] : 20; 
+            if (angle > -145 && angle < -35 && !isOutbound && s > 14) {
                 currentRun.push(curr);
             } else {
                 if (currentRun.length > 5) allRuns.push([...currentRun]);
@@ -130,7 +128,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // FIND LONGEST & FASTEST
         let longestM = 0;
         allRuns.forEach(run => {
             let rd = 0;
@@ -139,7 +136,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         state.waveTracks = allRuns.flat();
-        
         document.getElementById('waveCount').textContent = allRuns.length;
         document.getElementById('longestWave').textContent = `${Math.round(longestM)} m`;
         document.getElementById('totalDistance').textContent = `${(totalD / 1000).toFixed(2)} km`;
@@ -147,10 +143,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function renderMap() {
         if (!state.fullTrack.length) return;
-        if (state.map) state.map.remove();
+        if (state.map) { state.map.remove(); state.map = null; }
         
         state.map = L.map('mapContainer').setView(state.fullTrack[0], 14);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
 
         const showWavesOnly = elements.toggleWaveOnly.checked;
         const bgTrack = (state.lockedHeading !== null) ? state.filteredTrack : state.fullTrack;
@@ -158,20 +154,14 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!showWavesOnly) {
             L.polyline(bgTrack, {color: '#A0A0A0', weight: 2, opacity: 0.4}).addTo(state.map);
         }
-        
-        if (state.waveTracks.length > 0) {
-            L.polyline(state.waveTracks, {color: '#000', weight: 3}).addTo(state.map);
-        }
-        
-        if (state.longestTrack.length > 0) {
-            L.polyline(state.longestTrack, {color: '#D4AF37', weight: 5}).addTo(state.map);
-        }
+        if (state.waveTracks.length > 0) L.polyline(state.waveTracks, {color: '#000', weight: 3}).addTo(state.map);
+        if (state.longestTrack.length > 0) L.polyline(state.longestTrack, {color: '#D4AF37', weight: 5}).addTo(state.map);
 
-        const viewBounds = (showWavesOnly && state.waveTracks.length > 0) ? state.waveTracks : bgTrack;
+        const viewBounds = (showWavesOnly && state.waveTracks.length > 0) ? state.waveTracks : state.fullTrack;
         state.map.fitBounds(L.latLngBounds(viewBounds));
     }
 
-    // --- 3. SESSION MANAGEMENT ---
+    // --- 3. DASHBOARD & PERSISTENCE ---
     function populateSavedSessions() {
         elements.savedSelect.innerHTML = '<option value="">-- Saved Sessions --</option>';
         let keys = Object.keys(localStorage).filter(k => k.startsWith('Swellpath_')).sort().reverse();
@@ -189,12 +179,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const data = JSON.parse(localStorage.getItem(key));
         if (!data) return;
         state.currentData = data;
-        state.lockedHeading = null; // Reset lock on new load
+        state.lockedHeading = null;
         
-        document.getElementById('flightTime').textContent = `${data.flightTime} min`;
-        document.getElementById('motorTime').textContent = `${data.motorTime} min`;
-        document.getElementById('maxSpeed').textContent = `${data.maxSpeed} km/h`;
-        document.getElementById('fastestWave').textContent = `${data.maxSpeed} km/h`;
+        document.getElementById('flightTime').textContent = `${data.flightTime || 0} min`;
+        document.getElementById('motorTime').textContent = `${data.motorTime || 0} min`;
+        document.getElementById('maxSpeed').textContent = `${data.maxSpeed || 0} km/h`;
+        document.getElementById('fastestWave').textContent = `${data.maxSpeed || 0} km/h`;
         
         calculateTracks(data);
         renderMap();
