@@ -1,14 +1,14 @@
 /* ==========================================================================
-   Swellpath - Precision Session Analytics
+   Swellpath - Precision Session Analytics (Dark Mode v1.2)
    ========================================================================== */
 
 :root {
     --bg-color: #0A0A0A;
     --card-bg: #121212;
     --text-primary: #FFFFFF;
-    --text-secondary: #E5E5E7; /* Brightened up from gray for better legibility */
+    --text-secondary: #E5E5E7; 
     --border-color: #2C2C2E;
-    --accent-color: #D4AF37; /* Gold accent */
+    --accent-color: #D4AF37; /* Swellpath Gold */
     --silver-color: #E5E5E7;
     --border-radius: 12px;
 }
@@ -25,7 +25,7 @@ body {
     background-color: var(--bg-color);
     color: var(--text-primary);
     padding: 0 0 40px 0;
-    line-height: 1.6; /* Improved readability line-height */
+    line-height: 1.6;
 }
 
 /* Premium Header Banner */
@@ -45,8 +45,8 @@ body {
 }
 
 .brand-logo {
-    width: 80px;  /* Enlarged from 68px */
-    height: 80px; /* Enlarged from 68px */
+    width: 80px; 
+    height: 80px;
     object-fit: contain;
     border-radius: 18px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
@@ -54,21 +54,21 @@ body {
 }
 
 .logo {
-    font-size: 38px; /* Enlarged for mobile accessibility */
+    font-size: 38px;
     font-weight: 700;
     letter-spacing: -1px;
     color: #FFFFFF;
 }
 
 .subtitle {
-    font-size: 13px; /* Enlarged for mobile accessibility */
+    font-size: 11px;
     letter-spacing: 1.5px;
     text-transform: uppercase;
-    color: var(--text-secondary); /* Brightened */
+    color: var(--text-secondary);
     margin-top: 10px;
 }
 
-/* Main Container Layout */
+/* Main Container */
 .container {
     max-width: 680px;
     margin: 0 auto;
@@ -82,25 +82,24 @@ body {
     padding: 24px;
     border: 1px solid var(--border-color);
     margin-bottom: 24px;
-    text-align: center;
 }
 
 .instructions-panel h3 {
-    font-size: 14px; /* Enlarged */
+    font-size: 13px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 1px;
     color: var(--text-primary);
     margin-bottom: 16px;
+    text-align: center;
 }
 
 .instructions-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 20px;
-    font-size: 13px; /* Enlarged for mobile accessibility */
-    color: var(--text-secondary); /* Brightened */
-    text-align: left;
+    font-size: 12px;
+    color: var(--text-secondary);
 }
 
 .instructions-step {
@@ -111,7 +110,7 @@ body {
 
 .instructions-step strong {
     color: var(--text-primary);
-    font-size: 14px; /* Enlarged */
+    font-size: 13px;
 }
 
 /* Drop Zone */
@@ -122,33 +121,23 @@ body {
     padding: 48px 20px;
     text-align: center;
     cursor: pointer;
-    transition: border-color 0.2s ease, background-color 0.2s ease;
+    transition: all 0.2s ease;
     margin-bottom: 20px;
     position: relative;
 }
 
 .drop-zone:hover {
     border-color: var(--accent-color);
-    background: #141414;
+    background: #1a1a1c;
 }
 
 .drop-zone-text {
-    font-size: 15px; /* Enlarged */
-    color: var(--text-secondary); /* Brightened */
-}
-
-.mobile-text {
-    display: none;
+    font-size: 15px;
+    color: var(--text-secondary);
 }
 
 #fileInput {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    opacity: 0;
-    cursor: pointer;
+    display: none;
 }
 
 /* Saved Sessions Panel */
@@ -156,7 +145,7 @@ body {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
-    padding: 18px 20px; /* Slightly more space */
+    padding: 18px 20px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -165,10 +154,11 @@ body {
 }
 
 .saved-panel label {
-    font-size: 13px; /* Enlarged */
+    font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: var(--text-secondary); /* Brightened */
+    color: var(--text-secondary);
+    font-weight: 700;
 }
 
 select {
@@ -177,28 +167,47 @@ select {
     color: var(--text-primary);
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    padding: 10px 14px; /* Increased padding for easier mobile tapping */
-    font-size: 14px; /* Enlarged */
+    padding: 10px;
+    font-size: 14px;
     outline: none;
 }
 
+/* Shared Button Styles */
 .action-btn {
     background: var(--text-primary);
     color: #000000;
     border: none;
     border-radius: 8px;
-    padding: 10px 18px; /* Enlarged button area */
-    font-size: 14px; /* Enlarged */
-    font-weight: 600;
+    padding: 12px 18px;
+    font-size: 13px;
+    font-weight: 700;
     cursor: pointer;
-    transition: background 0.2s ease;
+    transition: all 0.2s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .action-btn:hover {
     background: var(--silver-color);
+    transform: translateY(-1px);
 }
 
-/* Dashboard Analytics */
+.action-btn:active {
+    transform: translateY(1px);
+}
+
+/* Specific button overrides */
+#lockHeadingBtn {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+#lockHeadingBtn:hover {
+    border-color: var(--accent-color);
+}
+
+/* Dashboard Grid */
 .dashboard {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -217,55 +226,58 @@ select {
     padding: 18px 14px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
 }
 
 .metric-card .label {
-    font-size: 12px; /* Enlarged */
+    font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: var(--text-secondary); /* Brightened */
+    color: var(--text-secondary);
+    margin-bottom: 4px;
 }
 
 .metric-card .value {
-    font-size: 22px; /* Enlarged */
+    font-size: 22px;
     font-weight: 700;
 }
 
 .longest-wave-card {
     grid-column: span 2;
-    background: linear-gradient(135deg, rgba(212, 175, 55, 0.08) 0%, rgba(0,0,0,0) 100%);
-    border-color: rgba(212, 175, 55, 0.3);
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.12) 0%, rgba(18, 18, 18, 1) 100%);
+    border: 1px solid rgba(212, 175, 55, 0.4);
 }
 
 .fastest-wave-card {
     grid-column: span 2;
-    background: linear-gradient(135deg, rgba(229, 229, 231, 0.05) 0%, rgba(0,0,0,0) 100%);
 }
 
 /* Controls Wrapper */
 .controls-wrapper {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     background: var(--card-bg);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
-    padding: 18px 20px;
+    padding: 20px;
     margin-bottom: 24px;
 }
 
+.button-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 220px;
+}
+
+/* Toggle Switch Styling */
 .switch-container {
     display: flex;
     align-items: center;
     gap: 12px;
     cursor: pointer;
-    font-size: 14px; /* Enlarged */
-    color: var(--text-secondary); /* Brightened */
-}
-
-.switch-container input {
-    display: none;
+    font-size: 13px;
+    color: var(--text-secondary);
 }
 
 .slider {
@@ -300,12 +312,18 @@ input:checked + .slider:before {
 
 /* Map Container */
 .map-container {
-    height: 380px;
+    height: 420px;
     width: 100%;
     border-radius: var(--border-radius);
     border: 1px solid var(--border-color);
-    background: var(--card-bg);
+    background: #000;
     overflow: hidden;
+    z-index: 1;
+}
+
+/* Leaflet Dark Theme Hack */
+.leaflet-container {
+    background: #000 !important;
 }
 
 /* Responsive Overrides */
@@ -314,32 +332,24 @@ input:checked + .slider:before {
         grid-template-columns: repeat(2, 1fr);
     }
     
-    .longest-wave-card, .fastest-wave-card {
-        grid-column: span 2;
+    .controls-wrapper {
+        flex-direction: column;
+        gap: 20px;
     }
-    
-    .desktop-text {
-        display: none;
+
+    .button-stack {
+        width: 100%;
     }
-    
+
     .mobile-text {
         display: block;
     }
-    
+
+    .desktop-text {
+        display: none;
+    }
+
     .instructions-grid {
         grid-template-columns: 1fr;
-        gap: 16px;
-    }
-}
-@media (max-width: 768px) {
-    .saved-panel {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 12px;
-    }
-    
-    .saved-panel select, 
-    .saved-panel .action-btn {
-        width: 100%;
     }
 }
