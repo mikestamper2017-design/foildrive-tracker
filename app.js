@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', function () {
         filteredTrack: [],
         waveTracks: [],
         longestTrack: [],
+        fastestTrack: [], // Correctly initialized here
         currentData: null,
         lockedHeading: null
     };
@@ -69,100 +70,112 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-function calculateTracks(data) {
-    state.fullTrack = data.lats.map((v, i) => [data.lats[i], data.lons[i]]);
-    state.filteredTrack = [];
-    state.waveTracks = [];
-    state.longestTrack = [];
-    state.fastestTrack = []; // Added to state
-    let currentRun = [], allRuns = [], totalD = 0;
+        for (let i = 1; i < lats.length; i++) {
+            let d = calculateDistance(lats[i-1], lons[i-1], lats[i], lons[i]);
+            let diff = (times[i] - times[i-1]) / 1000;
+            let s = diff > 0 ? (d/diff)*3.6 : 0;
+            rawSpeeds.push(s > 65 ? 0 : s);
+        }
 
-    for (let i = 1; i < state.fullTrack.length; i++) {
-        let prev = state.fullTrack[i-1], curr = state.fullTrack[i];
-        totalD += calculateDistance(prev[0], prev[1], curr[0], curr[1]);
-        let brng = calculateBearing(prev[0], prev[1], curr[0], curr[1]);
-        let dLon = curr[1] - prev[1], dLat = curr[0] - prev[0];
-        let angle = Math.atan2(dLat, dLon) * (180 / Math.PI);
+        let motorSec = 0, flightSec = 0;
+        for (let i = 0; i < rawSpeeds.length; i++) {
+            let window = rawSpeeds.slice(Math.max(0, i-2), i+3);
+            window.sort((a, b) => a - b);
+            let median = window[Math.floor(window.length / 2)];
+            let finalSpeed = median * 0.92;
+            calibratedSpeeds.push(finalSpeed);
+
+            let timeDiff = (times[i+1] - times[i]) / 1000;
+            if (finalSpeed > 0.5 && finalSpeed < 18.5) motorSec += timeDiff;
+            else if (finalSpeed >= 18.5) flightSec += timeDiff;
+        }
+
+        const data = {
+            displayName: fileName.split('.')[0].replace(/_/g, ' ').replace(/-/g, ' '),
+            dateStr: sessionDate.toLocaleDateString('en-CA', {month:'short', day:'numeric'}),
+            flightTime: Math.round(flightSec / 60),
+            motorTime: Math.round(motorSec / 60),
+            maxSpeed: Math.max(...calibratedSpeeds).toFixed(1),
+            lats, lons, speeds: calibratedSpeeds, times
+        };
+
+        let key = `Swellpath_${sessionDate.getTime()}`;
+        localStorage.setItem(key, JSON.stringify(data));
+        return key;
+    }
+
+    function calculateTracks(data) {
+        state.fullTrack = data.lats.map((v, i) => [data.lats[i], data.lons[i]]);
+        state.filteredTrack = [];
+        state.waveTracks = [];
+        state.longestTrack = [];
+        state.fastestTrack = []; 
+        let currentRun = [], allRuns = [], totalD = 0;
+
+        for (let i = 1; i < state.fullTrack.length; i++) {
+            let prev = state.fullTrack[i-1], curr = state.fullTrack[i];
+            totalD += calculateDistance(prev[0], prev[1], curr[0], curr[1]);
+            let brng = calculateBearing(prev[0], prev[1], curr[0], curr[1]);
+            let dLon = curr[1] - prev[1], dLat = curr[0] - prev[0];
+            let angle = Math.atan2(dLat, dLon) * (180 / Math.PI);
+            
+            let isOutbound = false;
+            if (state.lockedHeading !== null) {
+                let diff = Math.abs(brng - state.lockedHeading);
+                if ((diff > 180 ? 360 - diff : diff) < 50) isOutbound = true; 
+            }
+
+            if (!isOutbound) state.filteredTrack.push(curr);
+
+            if (!isOutbound && data.speeds[i] > 17 && angle > -145 && angle < -35) {
+                currentRun.push({coord: curr, speed: data.speeds[i]});
+            } else {
+                if (currentRun.length > 8) allRuns.push([...currentRun]); 
+                currentRun = [];
+            }
+        }
+
+        let longestM = 0, maxWaveSpeed = 0;
+        allRuns.forEach(run => {
+            let coordsOnly = run.map(p => p.coord);
+            let rd = 0;
+            for (let j=1; j<coordsOnly.length; j++) rd += calculateDistance(coordsOnly[j-1][0], coordsOnly[j-1][1], coordsOnly[j][0], coordsOnly[j][1]);
+            
+            if (rd > longestM) { longestM = rd; state.longestTrack = coordsOnly; }
+
+            let avgSpeed = run.reduce((sum, p) => sum + p.speed, 0) / run.length;
+            if (avgSpeed > maxWaveSpeed) {
+                maxWaveSpeed = avgSpeed;
+                state.fastestTrack = coordsOnly;
+            }
+        });
+
+        state.waveTracks = allRuns.map(run => run.map(p => p.coord)).flat();
+        document.getElementById('waveCount').textContent = allRuns.length;
+        document.getElementById('longestWave').textContent = `${Math.round(longestM)} m`;
+        document.getElementById('totalDistance').textContent = `${(totalD / 1000).toFixed(2)} km`;
+    }
+
+    function renderMap() {
+        if (!state.fullTrack.length) return;
+        if (state.map) { state.map.remove(); state.map = null; }
+        state.map = L.map('mapContainer').setView(state.fullTrack[0], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
+
+        const showWavesOnly = elements.toggleWaveOnly.checked;
+        const bgTrack = (state.lockedHeading !== null) ? state.filteredTrack : state.fullTrack;
         
-        let isOutbound = false;
-        if (state.lockedHeading !== null) {
-            let diff = Math.abs(brng - state.lockedHeading);
-            if ((diff > 180 ? 360 - diff : diff) < 50) isOutbound = true; 
+        if (!showWavesOnly) {
+            L.polyline(bgTrack, {color: '#A0A0A0', weight: 2, opacity: 0.4}).addTo(state.map);
         }
+        if (state.waveTracks.length > 0) L.polyline(state.waveTracks, {color: '#000', weight: 3}).addTo(state.map);
+        if (state.longestTrack.length > 0) L.polyline(state.longestTrack, {color: '#D4AF37', weight: 6, opacity: 0.9}).addTo(state.map);
+        if (state.fastestTrack.length > 0) L.polyline(state.fastestTrack, {color: '#00FFFF', weight: 4, dashArray: '5, 10'}).addTo(state.map);
 
-        if (!isOutbound) state.filteredTrack.push(curr);
-
-        // WAVE DETECTION
-        if (!isOutbound && data.speeds[i] > 17 && angle > -145 && angle < -35) {
-            currentRun.push({coord: curr, speed: data.speeds[i]});
-        } else {
-            if (currentRun.length > 8) allRuns.push([...currentRun]); 
-            currentRun = [];
-        }
+        const bounds = (showWavesOnly && state.waveTracks.length > 0) ? state.waveTracks : state.fullTrack;
+        state.map.fitBounds(L.latLngBounds(bounds));
     }
 
-    let longestM = 0;
-    let maxWaveSpeed = 0;
-
-    allRuns.forEach(run => {
-        let coordsOnly = run.map(p => p.coord);
-        
-        // Calculate Distance for Longest
-        let rd = 0;
-        for (let j=1; j<coordsOnly.length; j++) rd += calculateDistance(coordsOnly[j-1][0], coordsOnly[j-1][1], coordsOnly[j][0], coordsOnly[j][1]);
-        
-        if (rd > longestM) { 
-            longestM = rd; 
-            state.longestTrack = coordsOnly; 
-        }
-
-        // Calculate Avg Speed for Fastest
-        let avgSpeed = run.reduce((sum, p) => sum + p.speed, 0) / run.length;
-        if (avgSpeed > maxWaveSpeed) {
-            maxWaveSpeed = avgSpeed;
-            state.fastestTrack = coordsOnly;
-        }
-    });
-
-    state.waveTracks = allRuns.map(run => run.map(p => p.coord)).flat();
-    
-    document.getElementById('waveCount').textContent = allRuns.length;
-    document.getElementById('longestWave').textContent = `${Math.round(longestM)} m`;
-    document.getElementById('totalDistance').textContent = `${(totalD / 1000).toFixed(2)} km`;
-}
-
-function renderMap() {
-    if (!state.fullTrack.length) return;
-    if (state.map) { state.map.remove(); state.map = null; }
-    state.map = L.map('mapContainer').setView(state.fullTrack[0], 14);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
-
-    const showWavesOnly = elements.toggleWaveOnly.checked;
-    const bgTrack = (state.lockedHeading !== null) ? state.filteredTrack : state.fullTrack;
-    
-    // 1. The Background Track (Grey)
-    if (!showWavesOnly) {
-        L.polyline(bgTrack, {color: '#A0A0A0', weight: 2, opacity: 0.4}).addTo(state.map);
-    }
-    
-    // 2. All Waves (Black)
-    if (state.waveTracks.length > 0) {
-        L.polyline(state.waveTracks, {color: '#000', weight: 3}).addTo(state.map);
-    }
-    
-    // 3. The Longest Wave (Gold)
-    if (state.longestTrack.length > 0) {
-        L.polyline(state.longestTrack, {color: '#D4AF37', weight: 6, opacity: 0.9}).addTo(state.map);
-    }
-
-    // 4. The Fastest Wave (Cyan/Blue) - New!
-    if (state.fastestTrack.length > 0) {
-        L.polyline(state.fastestTrack, {color: '#00FFFF', weight: 4, dashArray: '5, 10'}).addTo(state.map);
-    }
-
-    const bounds = (showWavesOnly && state.waveTracks.length > 0) ? state.waveTracks : state.fullTrack;
-    state.map.fitBounds(L.latLngBounds(bounds));
-}
     // --- 3. PERSISTENCE ---
     function populateSavedSessions() {
         elements.savedSelect.innerHTML = '<option value="">-- Saved Sessions --</option>';
@@ -192,6 +205,7 @@ function renderMap() {
         elements.dashboard.classList.remove('dashboard-hidden');
     }
 
+    // --- 4. EVENTS ---
     elements.loadSessionBtn.addEventListener('click', () => {
         if (elements.savedSelect.value) loadSession(elements.savedSelect.value);
     });
@@ -221,6 +235,7 @@ function renderMap() {
         });
     }
 
+    // --- 5. HELPERS ---
     function calculateDistance(lat1, lon1, lat2, lon2) {
         const R = 6371e3, p = Math.PI/180;
         const a = 0.5 - Math.cos((lat2-lat1)*p)/2 + Math.cos(lat1*p)*Math.cos(lat2*p)*(1-Math.cos((lon2-lon1)*p))/2;
