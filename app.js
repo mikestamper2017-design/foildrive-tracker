@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     populateSavedSessions();
 
-    // --- 1. TOGGLES & INTERACTION ---
+    // --- 1. INTERACTION ---
     elements.toggleWaveOnly.addEventListener('change', () => { if (state.currentData) renderMap(); });
 
     elements.lockHeadingBtn.addEventListener('click', function() {
@@ -46,11 +46,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // --- 2. PHYSICS ENGINE (With 3-Second Smoothing) ---
+    // --- 2. THE CALIBRATED PHYSICS ENGINE ---
     function parseGPX(xmlString, fileName) {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlString, "text/xml");
-        let lats = [], lons = [], times = [], rawSpeeds = [], smoothedSpeeds = [];
+        let lats = [], lons = [], times = [], rawSpeeds = [], calibratedSpeeds = [];
         
         let tNodes = xmlDoc.getElementsByTagName("time");
         let sessionDate = tNodes.length > 0 ? new Date(tNodes[0].textContent) : new Date();
@@ -69,24 +69,28 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // Calculate Raw Speeds first
+        // STEP 1: Calculate Raw Speeds
         for (let i = 1; i < lats.length; i++) {
             let d = calculateDistance(lats[i-1], lons[i-1], lats[i], lons[i]);
             let diff = (times[i] - times[i-1]) / 1000;
             let s = diff > 0 ? (d/diff)*3.6 : 0;
-            rawSpeeds.push(s > 75 ? 0 : s); // Hard cap at 75km/h to kill massive glitches
+            rawSpeeds.push(s > 65 ? 0 : s); // Cap at 65km/h - physics limit for most foils
         }
 
-        // 3-Second Rolling Average to eliminate "Crazy Max Speeds"
+        // STEP 2: 5-Second Median Filter (Destroys outliers) + 0.92 Calibration Factor
         let motorSec = 0, flightSec = 0;
         for (let i = 0; i < rawSpeeds.length; i++) {
-            let window = rawSpeeds.slice(Math.max(0, i-2), i+1);
-            let avg = window.reduce((a, b) => a + b, 0) / window.length;
-            smoothedSpeeds.push(avg);
+            let window = rawSpeeds.slice(Math.max(0, i-2), i+3);
+            window.sort((a, b) => a - b);
+            let median = window[Math.floor(window.length / 2)];
+            
+            // Apply 0.92 Calibration (Aligns wrist-GPS with board speed)
+            let finalSpeed = median * 0.92;
+            calibratedSpeeds.push(finalSpeed);
 
             let timeDiff = (times[i+1] - times[i]) / 1000;
-            if (avg > 0 && avg < 18) motorSec += timeDiff;
-            else if (avg >= 18) flightSec += timeDiff;
+            if (finalSpeed > 0.5 && finalSpeed < 18.5) motorSec += timeDiff;
+            else if (finalSpeed >= 18.5) flightSec += timeDiff;
         }
 
         const data = {
@@ -94,8 +98,8 @@ document.addEventListener('DOMContentLoaded', function () {
             dateStr: sessionDate.toLocaleDateString('en-CA', {month:'short', day:'numeric'}),
             flightTime: Math.round(flightSec / 60),
             motorTime: Math.round(motorSec / 60),
-            maxSpeed: Math.max(...smoothedSpeeds).toFixed(1),
-            lats, lons, speeds: smoothedSpeeds, times
+            maxSpeed: Math.max(...calibratedSpeeds).toFixed(1),
+            lats, lons, speeds: calibratedSpeeds, times
         };
 
         let key = `Swellpath_${sessionDate.getTime()}`;
@@ -113,7 +117,6 @@ document.addEventListener('DOMContentLoaded', function () {
         for (let i = 1; i < state.fullTrack.length; i++) {
             let prev = state.fullTrack[i-1], curr = state.fullTrack[i];
             totalD += calculateDistance(prev[0], prev[1], curr[0], curr[1]);
-
             let brng = calculateBearing(prev[0], prev[1], curr[0], curr[1]);
             let dLon = curr[1] - prev[1], dLat = curr[0] - prev[0];
             let angle = Math.atan2(dLat, dLon) * (180 / Math.PI);
@@ -121,20 +124,16 @@ document.addEventListener('DOMContentLoaded', function () {
             let isOutbound = false;
             if (state.lockedHeading !== null) {
                 let diff = Math.abs(brng - state.lockedHeading);
-                let normalizedDiff = diff > 180 ? 360 - diff : diff;
-                if (normalizedDiff < 55) isOutbound = true; 
+                if ((diff > 180 ? 360 - diff : diff) < 50) isOutbound = true; 
             }
 
             if (!isOutbound) state.filteredTrack.push(curr);
 
-            // IMPROVED WAVE DETECTION:
-            // 1. Must be Inbound (Not Outbound)
-            // 2. Speed must be over 17km/h (On foil)
-            // 3. Direction must be within the 'Swell Window' (-145 to -35)
+            // WAVE DETECTION: Direction + Speed + Sustained Movement
             if (!isOutbound && data.speeds[i] > 17 && angle > -145 && angle < -35) {
                 currentRun.push(curr);
             } else {
-                if (currentRun.length > 6) allRuns.push([...currentRun]); // Minimum 6 points to be a 'wave'
+                if (currentRun.length > 8) allRuns.push([...currentRun]); // Minimum 8 points for real waves
                 currentRun = [];
             }
         }
@@ -155,7 +154,6 @@ document.addEventListener('DOMContentLoaded', function () {
     function renderMap() {
         if (!state.fullTrack.length) return;
         if (state.map) { state.map.remove(); state.map = null; }
-        
         state.map = L.map('mapContainer').setView(state.fullTrack[0], 14);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
 
@@ -172,7 +170,7 @@ document.addEventListener('DOMContentLoaded', function () {
         state.map.fitBounds(L.latLngBounds(bounds));
     }
 
-    // --- 3. SESSION MANAGEMENT ---
+    // --- 3. PERSISTENCE ---
     function populateSavedSessions() {
         elements.savedSelect.innerHTML = '<option value="">-- Saved Sessions --</option>';
         let keys = Object.keys(localStorage).filter(k => k.startsWith('Swellpath_'))
@@ -192,12 +190,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!data) return;
         state.currentData = data;
         state.lockedHeading = null;
-        
         document.getElementById('flightTime').textContent = `${data.flightTime} min`;
         document.getElementById('motorTime').textContent = `${data.motorTime} min`;
         document.getElementById('maxSpeed').textContent = `${data.maxSpeed} km/h`;
         document.getElementById('fastestWave').textContent = `${data.maxSpeed} km/h`;
-        
         calculateTracks(data);
         renderMap();
         elements.dashboard.classList.remove('dashboard-hidden');
@@ -232,7 +228,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // --- 4. UTILS ---
     function calculateDistance(lat1, lon1, lat2, lon2) {
         const R = 6371e3, p = Math.PI/180;
         const a = 0.5 - Math.cos((lat2-lat1)*p)/2 + Math.cos(lat1*p)*Math.cos(lat2*p)*(1-Math.cos((lon2-lon1)*p))/2;
