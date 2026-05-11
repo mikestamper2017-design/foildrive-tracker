@@ -69,8 +69,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // Replace your existing calculateTracks and renderMap functions with these updated versions:
-
 function calculateTracks(data) {
     state.fullTrack = data.lats.map((v, i) => [data.lats[i], data.lons[i]]);
     state.filteredTrack = [];
