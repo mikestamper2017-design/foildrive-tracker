@@ -22,41 +22,35 @@ document.addEventListener('DOMContentLoaded', function () {
 
     populateSavedSessions();
 
-    // --- 1. DIRECTIONAL & VIEW TOGGLES ---
-    elements.toggleWaveOnly.addEventListener('change', () => {
-        if (state.currentData) renderMap();
-    });
+    // --- 1. TOGGLES & INTERACTION ---
+    elements.toggleWaveOnly.addEventListener('change', () => { if (state.currentData) renderMap(); });
 
     elements.lockHeadingBtn.addEventListener('click', function() {
         if (state.fullTrack.length < 10) return;
-
         if (state.lockedHeading !== null) {
             state.lockedHeading = null;
             this.textContent = `Lock Outbound`;
             this.style.background = 'transparent';
             this.style.color = '#FFFFFF';
         } else {
-            // Capture the first 30 points to determine the "Taxi Out" direction
             const start = state.fullTrack[0];
             const end = state.fullTrack[Math.min(30, state.fullTrack.length - 1)];
             state.lockedHeading = calculateBearing(start[0], start[1], end[0], end[1]);
-            
             this.textContent = `Locked: ${Math.round(state.lockedHeading)}°`;
             this.style.background = '#D4AF37';
             this.style.color = '#000';
         }
-        
         if (state.currentData) {
             calculateTracks(state.currentData);
             renderMap();
         }
     });
 
-    // --- 2. PHYSICS ENGINE (Threshold: 18km/h) ---
+    // --- 2. PHYSICS ENGINE (With 3-Second Smoothing) ---
     function parseGPX(xmlString, fileName) {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlString, "text/xml");
-        let lats = [], lons = [], times = [], speeds = [];
+        let lats = [], lons = [], times = [], rawSpeeds = [], smoothedSpeeds = [];
         
         let tNodes = xmlDoc.getElementsByTagName("time");
         let sessionDate = tNodes.length > 0 ? new Date(tNodes[0].textContent) : new Date();
@@ -75,16 +69,24 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        let motorSec = 0, flightSec = 0;
+        // Calculate Raw Speeds first
         for (let i = 1; i < lats.length; i++) {
             let d = calculateDistance(lats[i-1], lons[i-1], lats[i], lons[i]);
             let diff = (times[i] - times[i-1]) / 1000;
             let s = diff > 0 ? (d/diff)*3.6 : 0;
-            speeds.push(s);
+            rawSpeeds.push(s > 75 ? 0 : s); // Hard cap at 75km/h to kill massive glitches
+        }
 
-            // ADJUSTED: 18km/h strict threshold for Flight
-            if (s > 0 && s < 18) motorSec += diff;
-            else if (s >= 18) flightSec += diff;
+        // 3-Second Rolling Average to eliminate "Crazy Max Speeds"
+        let motorSec = 0, flightSec = 0;
+        for (let i = 0; i < rawSpeeds.length; i++) {
+            let window = rawSpeeds.slice(Math.max(0, i-2), i+1);
+            let avg = window.reduce((a, b) => a + b, 0) / window.length;
+            smoothedSpeeds.push(avg);
+
+            let timeDiff = (times[i+1] - times[i]) / 1000;
+            if (avg > 0 && avg < 18) motorSec += timeDiff;
+            else if (avg >= 18) flightSec += timeDiff;
         }
 
         const data = {
@@ -92,8 +94,8 @@ document.addEventListener('DOMContentLoaded', function () {
             dateStr: sessionDate.toLocaleDateString('en-CA', {month:'short', day:'numeric'}),
             flightTime: Math.round(flightSec / 60),
             motorTime: Math.round(motorSec / 60),
-            maxSpeed: Math.max(...speeds).toFixed(1),
-            lats, lons, speeds, times
+            maxSpeed: Math.max(...smoothedSpeeds).toFixed(1),
+            lats, lons, speeds: smoothedSpeeds, times
         };
 
         let key = `Swellpath_${sessionDate.getTime()}`;
@@ -112,23 +114,27 @@ document.addEventListener('DOMContentLoaded', function () {
             let prev = state.fullTrack[i-1], curr = state.fullTrack[i];
             totalD += calculateDistance(prev[0], prev[1], curr[0], curr[1]);
 
-            let currentBrng = calculateBearing(prev[0], prev[1], curr[0], curr[1]);
+            let brng = calculateBearing(prev[0], prev[1], curr[0], curr[1]);
+            let dLon = curr[1] - prev[1], dLat = curr[0] - prev[0];
+            let angle = Math.atan2(dLat, dLon) * (180 / Math.PI);
             
-            // DIRECTIONAL FILTER: Remove points heading in the same cone as the outbound lock
             let isOutbound = false;
             if (state.lockedHeading !== null) {
-                let diff = Math.abs(currentBrng - state.lockedHeading);
+                let diff = Math.abs(brng - state.lockedHeading);
                 let normalizedDiff = diff > 180 ? 360 - diff : diff;
-                if (normalizedDiff < 60) isOutbound = true; // 60-degree cone
+                if (normalizedDiff < 55) isOutbound = true; 
             }
 
             if (!isOutbound) state.filteredTrack.push(curr);
 
-            // WAVE DETECTION: Must be Inbound (not Outbound) AND > 16km/h
-            if (!isOutbound && data.speeds[i] > 16) {
+            // IMPROVED WAVE DETECTION:
+            // 1. Must be Inbound (Not Outbound)
+            // 2. Speed must be over 17km/h (On foil)
+            // 3. Direction must be within the 'Swell Window' (-145 to -35)
+            if (!isOutbound && data.speeds[i] > 17 && angle > -145 && angle < -35) {
                 currentRun.push(curr);
             } else {
-                if (currentRun.length > 5) allRuns.push([...currentRun]);
+                if (currentRun.length > 6) allRuns.push([...currentRun]); // Minimum 6 points to be a 'wave'
                 currentRun = [];
             }
         }
@@ -162,11 +168,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (state.waveTracks.length > 0) L.polyline(state.waveTracks, {color: '#000', weight: 3}).addTo(state.map);
         if (state.longestTrack.length > 0) L.polyline(state.longestTrack, {color: '#D4AF37', weight: 5}).addTo(state.map);
 
-        const bounds = (showWavesOnly && state.waveTracks.length > 0) ? state.waveTracks : bgTrack;
+        const bounds = (showWavesOnly && state.waveTracks.length > 0) ? state.waveTracks : state.fullTrack;
         state.map.fitBounds(L.latLngBounds(bounds));
     }
 
-    // --- 3. SESSION MANAGEMENT (Fixed Naming) ---
+    // --- 3. SESSION MANAGEMENT ---
     function populateSavedSessions() {
         elements.savedSelect.innerHTML = '<option value="">-- Saved Sessions --</option>';
         let keys = Object.keys(localStorage).filter(k => k.startsWith('Swellpath_'))
@@ -197,7 +203,6 @@ document.addEventListener('DOMContentLoaded', function () {
         elements.dashboard.classList.remove('dashboard-hidden');
     }
 
-    // --- 4. EVENTS ---
     elements.loadSessionBtn.addEventListener('click', () => {
         if (elements.savedSelect.value) loadSession(elements.savedSelect.value);
     });
@@ -227,7 +232,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // --- 5. HELPERS ---
+    // --- 4. UTILS ---
     function calculateDistance(lat1, lon1, lat2, lon2) {
         const R = 6371e3, p = Math.PI/180;
         const a = 0.5 - Math.cos((lat2-lat1)*p)/2 + Math.cos(lat1*p)*Math.cos(lat2*p)*(1-Math.cos((lon2-lon1)*p))/2;
