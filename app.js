@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function () {
         filteredTrack: [],
         waveTracks: [],
         longestTrack: [],
-        fastestTrack: [], // Correctly initialized here
+        fastestTrack: [],
         currentData: null,
         lockedHeading: null
     };
@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // --- 2. THE CALIBRATED PHYSICS ENGINE ---
+    // --- 2. PHYSICS & PARSING ---
     function parseGPX(xmlString, fileName) {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlString, "text/xml");
@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', function () {
             let window = rawSpeeds.slice(Math.max(0, i-2), i+3);
             window.sort((a, b) => a - b);
             let median = window[Math.floor(window.length / 2)];
-            let finalSpeed = median * 0.92;
+            let finalSpeed = (median || 0) * 0.92;
             calibratedSpeeds.push(finalSpeed);
 
             let timeDiff = (times[i+1] - times[i]) / 1000;
@@ -176,7 +176,7 @@ document.addEventListener('DOMContentLoaded', function () {
         state.map.fitBounds(L.latLngBounds(bounds));
     }
 
-    // --- 3. PERSISTENCE ---
+    // --- 3. SESSION LOADING ---
     function populateSavedSessions() {
         elements.savedSelect.innerHTML = '<option value="">-- Saved Sessions --</option>';
         let keys = Object.keys(localStorage).filter(k => k.startsWith('Swellpath_'))
@@ -196,16 +196,31 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!data) return;
         state.currentData = data;
         state.lockedHeading = null;
+        
+        // Update values
         document.getElementById('flightTime').textContent = `${data.flightTime} min`;
         document.getElementById('motorTime').textContent = `${data.motorTime} min`;
         document.getElementById('maxSpeed').textContent = `${data.maxSpeed} km/h`;
-        document.getElementById('fastestWave').textContent = `${data.maxSpeed} km/h`;
+        
+        // Setup visual "Key" on cards
+        const fastestEl = document.getElementById('fastestWave');
+        fastestEl.textContent = `${data.maxSpeed} km/h`;
+        
+        // Clear old highlights first
+        document.querySelectorAll('.highlight-fastest, .highlight-longest').forEach(el => {
+            el.classList.remove('highlight-fastest', 'highlight-longest');
+        });
+
+        // Apply new highlights to parent card
+        fastestEl.closest('.stat-card')?.classList.add('highlight-fastest');
+        document.getElementById('longestWave').closest('.stat-card')?.classList.add('highlight-longest');
+        
         calculateTracks(data);
         renderMap();
         elements.dashboard.classList.remove('dashboard-hidden');
     }
 
-    // --- 4. EVENTS ---
+    // --- 4. SYSTEM EVENTS ---
     elements.loadSessionBtn.addEventListener('click', () => {
         if (elements.savedSelect.value) loadSession(elements.savedSelect.value);
     });
@@ -235,7 +250,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // --- 5. HELPERS ---
     function calculateDistance(lat1, lon1, lat2, lon2) {
         const R = 6371e3, p = Math.PI/180;
         const a = 0.5 - Math.cos((lat2-lat1)*p)/2 + Math.cos(lat1*p)*Math.cos(lat2*p)*(1-Math.cos((lon2-lon1)*p))/2;
