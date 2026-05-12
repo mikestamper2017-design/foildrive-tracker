@@ -4,7 +4,8 @@
     --text-primary: #111111;
     --text-secondary: #666666;
     --accent-color: #000000;
-    --brand-gold: #D4AF37; /* Highlight for longest wave/locked status */
+    --brand-gold: #D4AF37; /* Longest Wave Color */
+    --accent-cyan: #00BCD4;  /* Fastest Wave Color */
     --border-color: #E0E0E0;
     --border-radius: 12px;
 }
@@ -53,7 +54,7 @@ body {
 }
 
 #fileInput {
-    display: none; /* Hide the default browser input */
+    display: none; 
 }
 
 /* Saved Sessions Panel */
@@ -99,6 +100,7 @@ select {
     border-radius: var(--border-radius);
     display: flex;
     flex-direction: column;
+    transition: all 0.3s ease;
 }
 
 .metric-card .label {
@@ -114,9 +116,16 @@ select {
     font-weight: 600;
 }
 
-/* Highlighting Key Stats */
+/* --- WAVE HIGHLIGHTS --- */
+
 .longest-wave-card {
     border: 2px solid var(--brand-gold) !important;
+    background-color: rgba(212, 175, 55, 0.05) !important;
+}
+
+.fastest-wave-card {
+    border: 2px dashed var(--accent-cyan) !important;
+    background-color: rgba(0, 188, 212, 0.05) !important;
 }
 
 /* Map Container */
@@ -128,6 +137,28 @@ select {
     border: 1px solid var(--border-color);
     margin-top: 24px;
     z-index: 1;
+}
+
+/* --- MAP LEGEND --- */
+
+.map-legend {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-top: 16px;
+    padding: 12px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 /* Controls & Buttons */
@@ -155,15 +186,6 @@ select {
     transform: scale(0.98);
 }
 
-/* Toggle Switch Styling */
-.switch-container {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-    font-size: 14px;
-}
-
 /* Mobile Responsiveness */
 @media (max-width: 600px) {
     .controls-wrapper {
@@ -173,5 +195,11 @@ select {
     
     .dashboard {
         grid-template-columns: 1fr 1fr;
+    }
+    
+    .map-legend {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
     }
 }
