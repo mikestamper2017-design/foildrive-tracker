@@ -23,8 +23,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     populateSavedSessions();
 
-    // --- 1. INTERACTION ---
-    elements.toggleWaveOnly.addEventListener('change', () => { if (state.currentData) renderMap(); });
+    // --- 1. USER INTERACTION ---
+    elements.toggleWaveOnly.addEventListener('change', () => { 
+        if (state.currentData) renderMap(); 
+    });
 
     elements.lockHeadingBtn.addEventListener('click', function() {
         if (state.fullTrack.length < 10) return;
@@ -32,14 +34,16 @@ document.addEventListener('DOMContentLoaded', function () {
             state.lockedHeading = null;
             this.textContent = `Lock Outbound`;
             this.style.background = 'transparent';
-            this.style.color = '#FFFFFF';
+            this.style.color = 'var(--accent-color)';
+            this.style.border = '1px solid var(--border-color)';
         } else {
             const start = state.fullTrack[0];
             const end = state.fullTrack[Math.min(30, state.fullTrack.length - 1)];
             state.lockedHeading = calculateBearing(start[0], start[1], end[0], end[1]);
             this.textContent = `Locked: ${Math.round(state.lockedHeading)}°`;
-            this.style.background = '#D4AF37';
-            this.style.color = '#000';
+            this.style.background = 'var(--brand-gold)';
+            this.style.color = '#fff';
+            this.style.border = 'none';
         }
         if (state.currentData) {
             calculateTracks(state.currentData);
@@ -47,7 +51,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // --- 2. PHYSICS & PARSING ---
+    // --- 2. GPX PARSING & CALIBRATED PHYSICS ---
     function parseGPX(xmlString, fileName) {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlString, "text/xml");
@@ -74,15 +78,15 @@ document.addEventListener('DOMContentLoaded', function () {
             let d = calculateDistance(lats[i-1], lons[i-1], lats[i], lons[i]);
             let diff = (times[i] - times[i-1]) / 1000;
             let s = diff > 0 ? (d/diff)*3.6 : 0;
-            rawSpeeds.push(s > 65 ? 0 : s);
+            rawSpeeds.push(s > 65 ? 0 : s); 
         }
 
         let motorSec = 0, flightSec = 0;
         for (let i = 0; i < rawSpeeds.length; i++) {
             let window = rawSpeeds.slice(Math.max(0, i-2), i+3);
             window.sort((a, b) => a - b);
-            let median = window[Math.floor(window.length / 2)];
-            let finalSpeed = (median || 0) * 0.92;
+            let median = window[Math.floor(window.length / 2)] || 0;
+            let finalSpeed = median * 0.92;
             calibratedSpeeds.push(finalSpeed);
 
             let timeDiff = (times[i+1] - times[i]) / 1000;
@@ -104,6 +108,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return key;
     }
 
+    // --- 3. TRACK & WAVE ANALYTICS ---
     function calculateTracks(data) {
         state.fullTrack = data.lats.map((v, i) => [data.lats[i], data.lons[i]]);
         state.filteredTrack = [];
@@ -135,7 +140,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        let longestM = 0, maxWaveSpeed = 0;
+        let longestM = 0, maxWaveAvg = 0;
         allRuns.forEach(run => {
             let coordsOnly = run.map(p => p.coord);
             let rd = 0;
@@ -144,8 +149,8 @@ document.addEventListener('DOMContentLoaded', function () {
             if (rd > longestM) { longestM = rd; state.longestTrack = coordsOnly; }
 
             let avgSpeed = run.reduce((sum, p) => sum + p.speed, 0) / run.length;
-            if (avgSpeed > maxWaveSpeed) {
-                maxWaveSpeed = avgSpeed;
+            if (avgSpeed > maxWaveAvg) {
+                maxWaveAvg = avgSpeed;
                 state.fastestTrack = coordsOnly;
             }
         });
@@ -156,6 +161,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('totalDistance').textContent = `${(totalD / 1000).toFixed(2)} km`;
     }
 
+    // --- 4. MAP RENDERING ---
     function renderMap() {
         if (!state.fullTrack.length) return;
         if (state.map) { state.map.remove(); state.map = null; }
@@ -165,18 +171,16 @@ document.addEventListener('DOMContentLoaded', function () {
         const showWavesOnly = elements.toggleWaveOnly.checked;
         const bgTrack = (state.lockedHeading !== null) ? state.filteredTrack : state.fullTrack;
         
-        if (!showWavesOnly) {
-            L.polyline(bgTrack, {color: '#A0A0A0', weight: 2, opacity: 0.4}).addTo(state.map);
-        }
+        if (!showWavesOnly) L.polyline(bgTrack, {color: '#A0A0A0', weight: 2, opacity: 0.4}).addTo(state.map);
         if (state.waveTracks.length > 0) L.polyline(state.waveTracks, {color: '#000', weight: 3}).addTo(state.map);
         if (state.longestTrack.length > 0) L.polyline(state.longestTrack, {color: '#D4AF37', weight: 6, opacity: 0.9}).addTo(state.map);
-        if (state.fastestTrack.length > 0) L.polyline(state.fastestTrack, {color: '#00FFFF', weight: 4, dashArray: '5, 10'}).addTo(state.map);
+        if (state.fastestTrack.length > 0) L.polyline(state.fastestTrack, {color: '#00BCD4', weight: 4, dashArray: '5, 10'}).addTo(state.map);
 
         const bounds = (showWavesOnly && state.waveTracks.length > 0) ? state.waveTracks : state.fullTrack;
         state.map.fitBounds(L.latLngBounds(bounds));
     }
 
-    // --- 3. SESSION LOADING ---
+    // --- 5. UI & PERSISTENCE ---
     function populateSavedSessions() {
         elements.savedSelect.innerHTML = '<option value="">-- Saved Sessions --</option>';
         let keys = Object.keys(localStorage).filter(k => k.startsWith('Swellpath_'))
@@ -197,30 +201,22 @@ document.addEventListener('DOMContentLoaded', function () {
         state.currentData = data;
         state.lockedHeading = null;
         
-        // Update values
         document.getElementById('flightTime').textContent = `${data.flightTime} min`;
         document.getElementById('motorTime').textContent = `${data.motorTime} min`;
         document.getElementById('maxSpeed').textContent = `${data.maxSpeed} km/h`;
-        
-        // Setup visual "Key" on cards
-        const fastestEl = document.getElementById('fastestWave');
-        fastestEl.textContent = `${data.maxSpeed} km/h`;
-        
-        // Clear old highlights first
-        document.querySelectorAll('.highlight-fastest, .highlight-longest').forEach(el => {
-            el.classList.remove('highlight-fastest', 'highlight-longest');
-        });
+        document.getElementById('fastestWave').textContent = `${data.maxSpeed} km/h`;
 
-        // Apply new highlights to parent card
-        fastestEl.closest('.stat-card')?.classList.add('highlight-fastest');
-        document.getElementById('longestWave').closest('.stat-card')?.classList.add('highlight-longest');
+        // Clear and apply highlights
+        document.querySelectorAll('.metric-card').forEach(c => c.classList.remove('longest-wave-card', 'fastest-wave-card'));
+        document.getElementById('longestWave').closest('.metric-card').classList.add('longest-wave-card');
+        document.getElementById('fastestWave').closest('.metric-card').classList.add('fastest-wave-card');
         
         calculateTracks(data);
         renderMap();
         elements.dashboard.classList.remove('dashboard-hidden');
     }
 
-    // --- 4. SYSTEM EVENTS ---
+    // --- 6. SYSTEM EVENTS ---
     elements.loadSessionBtn.addEventListener('click', () => {
         if (elements.savedSelect.value) loadSession(elements.savedSelect.value);
     });
@@ -242,14 +238,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (elements.shareBtn) {
         elements.shareBtn.addEventListener('click', function() {
-            const stats = `Swellpath Session:\n• Flight: ${document.getElementById('flightTime').textContent}\n• Motor: ${document.getElementById('motorTime').textContent}\n• Max: ${document.getElementById('maxSpeed').textContent}\n• Waves: ${document.getElementById('waveCount').textContent}\n#FoilDrive`;
+            const stats = `Swellpath Session:\n• Flight: ${document.getElementById('flightTime').textContent}\n• Motor: ${document.getElementById('motorTime').textContent}\n• Max: ${document.getElementById('maxSpeed').textContent}\n• Longest: ${document.getElementById('longestWave').textContent}\n• Waves: ${document.getElementById('waveCount').textContent}\n#FoilDrive #Swellpath`;
             navigator.clipboard.writeText(stats).then(() => {
+                const originalText = this.textContent;
                 this.textContent = "✅ Copied";
-                setTimeout(() => { this.textContent = "Share Session"; }, 2000);
+                setTimeout(() => { this.textContent = originalText; }, 2000);
             });
         });
     }
 
+    // --- 7. HELPERS ---
     function calculateDistance(lat1, lon1, lat2, lon2) {
         const R = 6371e3, p = Math.PI/180;
         const a = 0.5 - Math.cos((lat2-lat1)*p)/2 + Math.cos(lat1*p)*Math.cos(lat2*p)*(1-Math.cos((lon2-lon1)*p))/2;
