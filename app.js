@@ -66,23 +66,48 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     const fileInput = getEl('fileInput');
+    const dropZone = getEl('dropZone');
+
+    // Dual-routing processing engine (Handles both direct touch overlays and desktop drag-drop file collections)
     if (fileInput) {
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                const file = e.target.files[0];
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    const key = parseGPX(ev.target.result, file.name);
-                    populateSavedSessions();
-                    const savedSessions = getEl('savedSessions');
-                    if (savedSessions) savedSessions.value = key;
-                    loadSession(key);
-                };
-                reader.readAsText(file);
+        fileInput.addEventListener('change', handleFileSelected);
+    }
+    
+    if (dropZone) {
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (e.dataTransfer.files.length > 0) {
+                processFile(e.dataTransfer.files[0]);
             }
         });
     }
 
+    function handleFileSelected(e) {
+        if (e.target.files && e.target.files.length > 0) {
+            processFile(e.target.files[0]);
+        }
+    }
+
+    function processFile(file) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            try {
+                const key = parseGPX(ev.target.result, file.name);
+                populateSavedSessions();
+                const savedSessions = getEl('savedSessions');
+                if (savedSessions) savedSessions.value = key;
+                loadSession(key);
+            } catch (err) {
+                console.error("Error processing session file:", err);
+                alert("Could not process file. Ensure it's a valid Strava GPX/TCX file.");
+            }
+        };
+        reader.onerror = (err) => {
+            console.error("FileReader error:", err);
+        };
+        reader.readAsText(file);
+    }
     // --- 3. GPX PARSING & CALIBRATED PHYSICS ---
     function parseGPX(xmlString, fileName) {
         const parser = new DOMParser();
