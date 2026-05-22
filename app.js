@@ -12,11 +12,14 @@ document.addEventListener('DOMContentLoaded', function () {
         lockedHeading: null
     };
 
-    // Initialize the app view drops
+    // Initialize drop list views
     populateSavedSessions();
 
-    // Safely pull elements on-demand to prevent script failure if an ID is missing or delayed
+    // PERSISTENCE RESTORE: Pull previous gear profiles out of localStorage caching
     function getEl(id) { return document.getElementById(id); }
+    if (getEl('gearFoilDrive')) getEl('gearFoilDrive').value = localStorage.getItem('swellpath_pref_foildrive') || '';
+    if (getEl('gearFoil')) getEl('gearFoil').value = localStorage.getItem('swellpath_pref_foil') || '';
+    if (getEl('gearWing')) getEl('gearWing').value = localStorage.getItem('swellpath_pref_wing') || '';
 
     // --- 2. USER INTERACTION INTERFACES ---
     const toggleWaveOnly = getEl('toggleWaveOnly');
@@ -41,7 +44,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const end = state.fullTrack[Math.min(30, state.fullTrack.length - 1)];
                 state.lockedHeading = calculateBearing(start[0], start[1], end[0], end[1]);
                 this.textContent = `Locked: ${Math.round(state.lockedHeading)}°`;
-                this.style.background = '#D4AF37'; // Gold fill
+                this.style.background = '#D4AF37'; 
                 this.style.color = '#111';
                 this.style.border = 'none';
             }
@@ -266,11 +269,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (getEl('longestWave')) getEl('longestWave').closest('.metric-card').classList.add('longest-wave-card');
         if (getEl('fastestWave')) getEl('fastestWave').closest('.metric-card').classList.add('fastest-wave-card');
-
         if (getEl('dashboard')) getEl('dashboard').classList.remove('dashboard-hidden');
     }
 
-    // --- 7. CANVAS SHARE BADGE GENERATOR ---
+    // --- 7. CANVAS SHARE BADGE GENERATOR (INSTAGRAM 4:5 FORMAT) ---
     const shareBtn = getEl('shareBtn');
     if (shareBtn) {
         shareBtn.addEventListener('click', function() {
@@ -279,107 +281,182 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
+            // High-res native 4:5 Instagram sizing target
             const canvas = document.createElement('canvas');
-            canvas.width = 1200;
-            canvas.height = 675;
+            canvas.width = 1080;
+            canvas.height = 1350;
             const ctx = canvas.getContext('2d');
 
             const data = state.currentData;
             const waveCount = getEl('waveCount') ? getEl('waveCount').textContent : '0';
             const longestWave = getEl('longestWave') ? getEl('longestWave').textContent : '0 m';
 
-            // Background matte black
+            // Gather values from optional gear bag text inputs
+            const fdVal = getEl('gearFoilDrive') ? getEl('gearFoilDrive').value.trim() : '';
+            const foilVal = getEl('gearFoil') ? getEl('gearFoil').value.trim() : '';
+            const wingVal = getEl('gearWing') ? getEl('gearWing').value.trim() : '';
+
+            // AUTO-SAVE GEAR DATA: Persist user choices into the device cache instantly
+            localStorage.setItem('swellpath_pref_foildrive', fdVal);
+            localStorage.setItem('swellpath_pref_foil', foilVal);
+            localStorage.setItem('swellpath_pref_wing', wingVal);
+
+            // Matte Charcoal Theme Base Foundation
             ctx.fillStyle = '#0a0a0c'; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Left Background Grid lines
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+            // Subtle Technical Coordinate Grid Background Overlay Lines
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.025)';
             ctx.lineWidth = 1;
-            for (let x = 0; x < 550; x += 40) {
-                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            for (let x = 0; x < canvas.width; x += 50) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 680); ctx.stroke();
             }
-            for (let y = 0; y < canvas.height; y += 40) {
-                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(550, y); ctx.stroke();
+            for (let y = 0; y < 680; y += 50) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
             }
 
-            // Bound Map Calculations
+            // Boundary track computations for aspect calculations
             let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
             state.fullTrack.forEach(pt => {
                 if (pt[0] < minLat) minLat = pt[0]; if (pt[0] > maxLat) maxLat = pt[0];
                 if (pt[1] < minLon) minLon = pt[1]; if (pt[1] > maxLon) maxLon = pt[1];
             });
 
-            const latRange = maxLat - minLat;
-            const lonRange = maxLon - minLon;
-            const padding = 60;
-            const mapW = 480, mapH = 500;
+            const latRange = maxLat - minLat || 0.001;
+            const lonRange = maxLon - minLon || 0.001;
+            
+            const mapX = 80, mapY = 160, mapW = 920, mapH = 480;
+            const scale = Math.min(mapW / lonRange, mapH / latRange);
+            const xOffset = mapX + (mapW - lonRange * scale) / 2;
+            const yOffset = mapY + (mapH - latRange * scale) / 2;
 
-            function scaleX(lon) { return padding + ((lon - minLon) / lonRange) * (mapW - padding * 2); }
-            function scaleY(lat) { return (canvas.height - padding) - ((lat - minLat) / latRange) * (mapH - padding * 2); }
+            function scaleX(lon) { return xOffset + (lon - minLon) * scale; }
+            function scaleY(lat) { return (yOffset + mapH) - (lat - minLat) * scale; }
 
-            // Base tracking path line
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-            ctx.lineWidth = 2;
+            // Draw primary GPS tracking line route path
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
             ctx.beginPath();
             state.fullTrack.forEach((pt, idx) => {
-                const x = scaleX(pt[1]);
-                const y = scaleY(pt[0]);
-                if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                ctx.lineTo(scaleX(pt[1]), scaleY(pt[0]));
             });
             ctx.stroke();
 
-            // Highlight Longest Ride track overlay
+            // Overlay Longest Ride with premium luminous glowing shadow lines
             if (state.longestTrack && state.longestTrack.length > 0) {
+                ctx.save();
                 ctx.strokeStyle = '#D4AF37'; 
-                ctx.lineWidth = 5;
+                ctx.lineWidth = 7;
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = 'rgba(212, 175, 55, 0.6)';
                 ctx.beginPath();
                 state.longestTrack.forEach((pt, idx) => {
-                    const x = scaleX(pt[1]);
-                    const y = scaleY(pt[0]);
+                    const x = scaleX(pt[1]); const y = scaleY(pt[0]);
                     if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
                 });
                 ctx.stroke();
+                ctx.restore();
             }
 
-            // Layout Split Line
-            ctx.strokeStyle = '#222226';
-            ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.moveTo(580, 50); ctx.lineTo(580, canvas.height - 50); ctx.stroke(); 
-
-            // Typography Metrics Labels
+            // Typography Layout Core Headers
             ctx.textBaseline = 'top';
-            ctx.font = 'bold 20px monospace';
-            ctx.fillStyle = '#666';
-            ctx.fillText('// SWELLPATH METRICS', 630, 75);
+            ctx.font = 'bold 22px monospace';
+            ctx.fillStyle = '#666670';
+            ctx.fillText('// SWELLPATH PRECISION LABS', 80, 60);
 
-            ctx.font = '32px sans-serif';
+            ctx.font = 'bold 42px sans-serif';
             ctx.fillStyle = '#FFF';
-            ctx.fillText(`${data.dateStr} — ${data.displayName}`, 630, 110);
+            ctx.fillText(`${data.displayName}`, 80, 95);
+            
+            ctx.font = '24px monospace';
+            ctx.fillStyle = '#888892';
+            ctx.textAlign = 'right';
+            ctx.fillText(`${data.dateStr}`, canvas.width - 80, 108);
+            ctx.textAlign = 'left'; 
 
-            function drawMetricRow(label, value, color, yPos) {
+            // Middle Section Content Break Rule line
+            ctx.strokeStyle = '#1c1c24';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(80, 680); ctx.lineTo(canvas.width - 80, 680); ctx.stroke();
+
+            // Highlight Performance Hero Stat Block (Longest Ride Spotlight)
+            ctx.font = 'bold 20px monospace';
+            ctx.fillStyle = '#D4AF37';
+            ctx.fillText('// HERO PERFORMANCE RIDE', 80, 720);
+
+            ctx.font = 'bold 96px sans-serif';
+            ctx.fillStyle = '#FFF';
+            ctx.fillText(longestWave, 75, 755);
+
+            ctx.font = '24px monospace';
+            ctx.fillStyle = '#888892';
+            ctx.fillText('UNASSISTED GLIDE DISTANCE', 420, 810);
+
+            ctx.beginPath(); ctx.moveTo(80, 890); ctx.lineTo(canvas.width - 80, 890); ctx.stroke();
+
+            // Performance Secondary Row Details Grid
+            function drawSubMetric(label, value, xPos, yPos) {
                 ctx.font = '16px monospace';
-                ctx.fillStyle = '#888';
-                ctx.fillText(label, 630, yPos);
-
-                ctx.font = 'bold 36px sans-serif';
-                ctx.fillStyle = color;
-                ctx.fillText(value, 630, yPos + 22);
-
-                ctx.strokeStyle = '#1c1c22';
-                ctx.lineWidth = 1;
-                ctx.beginPath(); ctx.moveTo(630, yPos + 70); ctx.lineTo(1120, yPos + 70); ctx.stroke();
+                ctx.fillStyle = '#666670';
+                ctx.fillText(label, xPos, yPos);
+                ctx.font = 'bold 38px sans-serif';
+                ctx.fillStyle = '#FFF';
+                ctx.fillText(value, xPos, yPos + 24);
             }
 
-            drawMetricRow('⚡ MAX SPEED', `${data.maxSpeed} km/h`, '#00BCD4', 200);   
-            drawMetricRow('🦅 GLIDE TIME (FLIGHT)', `${data.flightTime} min`, '#FFF', 300); 
-            drawMetricRow('🌊 TOTAL RIDES', `${waveCount} Waves (Longest: ${longestWave})`, '#D4AF37', 400); 
-            drawMetricRow('🔋 TOTAL BATTERY ENGAGEMENT', `${data.motorTime} min`, '#888', 500);
+            drawSubMetric('⚡ MAX SPEED', `${data.maxSpeed} km/h`, 80, 930);
+            drawSubMetric('🦅 FLIGHT TIME', `${data.flightTime} min`, 340, 930);
+            drawSubMetric('🌊 RIDE COUNT', `${waveCount} Waves`, 600, 930);
+            drawSubMetric('🔋 MOTOR TIME', `${data.motorTime} min`, 840, 930);
 
-            // Print output target inside modal window box
+            ctx.beginPath(); ctx.moveTo(80, 1040); ctx.lineTo(canvas.width - 80, 1040); ctx.stroke();
+
+            // Render Optional Equipment Bag Profile Stats if populated
+            if (fdVal || foilVal || wingVal) {
+                ctx.font = 'bold 18px monospace';
+                ctx.fillStyle = '#666670';
+                ctx.fillText('// EQUIPMENT PROFILE', 80, 1080);
+
+                let currentX = 80;
+                ctx.font = 'bold 24px sans-serif';
+                ctx.fillStyle = '#E5E5E7';
+
+                if (fdVal) {
+                    ctx.fillText(`⚡ ${fdVal}`, currentX, 1115);
+                    currentX += ctx.measureText(`⚡ ${fdVal}`).width + 40;
+                }
+                if (foilVal) {
+                    ctx.fillText(`🪽 ${foilVal}`, currentX, 1115);
+                    currentX += ctx.measureText(`🪽 ${foilVal}`).width + 40;
+                }
+                if (wingVal) {
+                    ctx.fillText(`💨 ${wingVal}`, currentX, 1115);
+                }
+            } else {
+                ctx.font = 'italic 22px sans-serif';
+                ctx.fillStyle = '#33333d';
+                ctx.fillText('Tracked with Swellpath Unassisted Wave Processing Engine.', 80, 1100);
+            }
+
+            // Editorial Footer Stamps
+            ctx.strokeStyle = '#22222a';
+            ctx.beginPath(); ctx.moveTo(80, 1200); ctx.lineTo(canvas.width - 80, 1200); ctx.stroke();
+
+            ctx.font = 'bold 16px monospace';
+            ctx.fillStyle = '#44444c';
+            ctx.fillText('SWELLPATH.APP', 80, 1240);
+            
+            ctx.textAlign = 'right';
+            ctx.fillText('PRECISION FOIL ANALYTICS', canvas.width - 80, 1240);
+            ctx.textAlign = 'left';
+
+            // Push final raw base64 data stream to preview frame image container node
             const imgUrl = canvas.toDataURL('image/png');
             const container = getEl('imageContainer');
             if (container) {
-                container.innerHTML = `<img src="${imgUrl}" style="max-width:100%; height:auto; border:1px solid #444; border-radius:6px;" alt="Session Graphic"/>`;
+                container.innerHTML = `<img src="${imgUrl}" style="max-width:100%; height:auto; border:1px solid #222; border-radius:8px;" alt="Instagram Session Badge"/>`;
             }
             if (getEl('shareModal')) getEl('shareModal').style.display = 'flex';
         });
