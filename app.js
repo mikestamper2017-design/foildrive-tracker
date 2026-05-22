@@ -265,44 +265,25 @@ document.addEventListener('DOMContentLoaded', function () {
         state.map.fitBounds(L.latLngBounds(bounds));
     }
 
-    // --- 6. UI MANAGEMENT & PERSISTENCE ---
-    function populateSavedSessions() {
-        const savedSelect = getEl('savedSessions');
-        if (!savedSelect) return;
-        
-        savedSelect.innerHTML = '<option value="">-- Saved Sessions --</option>';
-        let keys = Object.keys(localStorage).filter(k => k.startsWith('Swellpath_'))
-                    .sort((a,b) => b.split('_')[1] - a.split('_')[1]);
-
-        keys.forEach(key => {
-            const data = JSON.parse(localStorage.getItem(key));
-            let opt = document.createElement('option');
-            opt.value = key;
-            opt.textContent = `${data.dateStr.split(',')[0]} - ${data.displayName}`;
-            savedSelect.appendChild(opt);
-        });
-    }
-
     function loadSession(key) {
         const data = JSON.parse(localStorage.getItem(key));
         if (!data) return;
         state.currentData = data;
         state.lockedHeading = null;
         
+        // 1. Reveal the dashboard first so elements have height/width
+        const dash = getEl('dashboard');
+        if (dash) dash.classList.remove('dashboard-hidden');
+        
+        // 2. Update stats
         if (getEl('flightTime')) getEl('flightTime').textContent = `${data.flightTime} min`;
         if (getEl('motorTime')) getEl('motorTime').textContent = `${data.motorTime} min`;
         if (getEl('maxSpeed')) getEl('maxSpeed').textContent = `${data.maxSpeed} km/h`;
 
-        document.querySelectorAll('.metric-card').forEach(c => c.classList.remove('longest-wave-card', 'fastest-wave-card'));
-        
+        // 3. Process and Render
         calculateTracks(data);
         renderMap();
-
-        if (getEl('longestWave')) getEl('longestWave').closest('.metric-card').classList.add('longest-wave-card');
-        if (getEl('fastestWave')) getEl('fastestWave').closest('.metric-card').classList.add('fastest-wave-card');
-        if (getEl('dashboard')) getEl('dashboard').classList.remove('dashboard-hidden');
     }
-
     // --- 7. CANVAS SHARE BADGE GENERATOR (HIGH CONTRAST EDITION) ---
     const shareBtn = getEl('shareBtn');
     if (shareBtn) {
