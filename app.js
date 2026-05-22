@@ -91,11 +91,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
             let timeDiff = (times[i+1] - times[i]) / 1000;
             
-            // Motor time logs total cumulative time engine hours under battery load (> 2.0 km/h)
             if (finalSpeed > 2.0) {
                 motorSec += timeDiff;
             }
-            // Tightened Fix: Shifted flight gate to 16.5 km/h to cleanly extract small-wave glide time
             if (finalSpeed >= 16.5) {
                 flightSec += timeDiff;
             }
@@ -140,15 +138,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (!isOutbound) state.filteredTrack.push(curr);
 
-            // Tightened Fix: Schmitt Trigger thresholds tuned to eliminate taxi-acceleration overlaps
             let speedCondition = false;
             if (!isCurrentlyOnWave) {
-                if (data.speeds[i] >= 16.5) { // Needs 16.5 km/h to kick off a wave run
+                if (data.speeds[i] >= 16.5) { 
                     speedCondition = true;
                     isCurrentlyOnWave = true;
                 }
             } else {
-                if (data.speeds[i] >= 13.0) { // Will drop out if speed sinks beneath 13.0 km/h
+                if (data.speeds[i] >= 13.0) { 
                     speedCondition = true;
                 } else {
                     isCurrentlyOnWave = false;
@@ -160,7 +157,6 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!isOutbound && speedCondition && directionCondition) {
                 currentRun.push({coord: curr, speed: data.speeds[i]});
             } else {
-                // Tightened Fix: Raised required data frame limit to 6 points (~6 seconds) to filter chatter
                 if (currentRun.length >= 6) {
                     allRuns.push([...currentRun]); 
                 }
@@ -253,7 +249,26 @@ document.addEventListener('DOMContentLoaded', function () {
         elements.dashboard.classList.remove('dashboard-hidden');
     }
 
-   // --- 6. SYSTEM EVENTS: UPGRADED CANVAS SHARE GENERATOR ---
+    // --- 6. SYSTEM EVENTS: UPGRADED CANVAS SHARE GENERATOR ---
+    elements.loadSessionBtn.addEventListener('click', () => {
+        if (elements.savedSelect.value) loadSession(elements.savedSelect.value);
+    });
+
+    elements.dropZone.addEventListener('click', () => elements.fileInput.click());
+    elements.fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const key = parseGPX(ev.target.result, file.name);
+                populateSavedSessions();
+                elements.savedSelect.value = key;
+                loadSession(key);
+            };
+            reader.readAsText(file);
+        }
+    });
+
     if (elements.shareBtn) {
         elements.shareBtn.addEventListener('click', function() {
             if (!state.currentData || !state.fullTrack.length) {
@@ -261,7 +276,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            // 1. Create the off-screen canvas (16:9 aspect ratio)
             const canvas = document.createElement('canvas');
             canvas.width = 1200;
             canvas.height = 675;
@@ -271,11 +285,9 @@ document.addEventListener('DOMContentLoaded', function () {
             const waveCount = document.getElementById('waveCount').textContent;
             const longestWave = document.getElementById('longestWave').textContent;
 
-            // 2. Draw Background Base
-            ctx.fillStyle = '#0a0a0c'; // Deep, premium matte black
+            ctx.fillStyle = '#0a0a0c'; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 3. Draw Decorative Grid Lines (Left Side Map Backdrop)
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
             ctx.lineWidth = 1;
             for (let x = 0; x < 550; x += 40) {
@@ -285,7 +297,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(550, y); ctx.stroke();
             }
 
-            // 4. Draw Minimalist GPS Route Track
             let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
             state.fullTrack.forEach(pt => {
                 if (pt[0] < minLat) minLat = pt[0]; if (pt[0] > maxLat) maxLat = pt[0];
@@ -300,7 +311,6 @@ document.addEventListener('DOMContentLoaded', function () {
             function scaleX(lon) { return padding + ((lon - minLon) / lonRange) * (mapW - padding * 2); }
             function scaleY(lat) { return (canvas.height - padding) - ((lat - minLat) / latRange) * (mapH - padding * 2); }
 
-            // Draw full background gray track line
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -311,9 +321,8 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             ctx.stroke();
 
-            // Highlight Longest Wave Overlaid in Brand Gold
             if (state.longestTrack && state.longestTrack.length > 0) {
-                ctx.strokeStyle = '#D4AF37'; // Brand Gold
+                ctx.strokeStyle = '#D4AF37'; 
                 ctx.lineWidth = 5;
                 ctx.beginPath();
                 state.longestTrack.forEach((pt, idx) => {
@@ -324,14 +333,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 ctx.stroke();
             }
 
-            // 5. Draw Content Dividers
             ctx.strokeStyle = '#222226';
             ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.moveTo(580, 50); ctx.lineTo(580, canvas.height - 50); ctx.stroke(); // Vertical split
+            ctx.beginPath(); ctx.moveTo(580, 50); ctx.lineTo(580, canvas.height - 50); ctx.stroke(); 
 
-            // 6. Draw Text Header & Telemetry Data (Right Side)
             ctx.textBaseline = 'top';
-            
             ctx.font = 'bold 20px monospace';
             ctx.fillStyle = '#666';
             ctx.fillText('// SWELLPATH METRICS', 630, 75);
@@ -354,12 +360,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 ctx.beginPath(); ctx.moveTo(630, yPos + 70); ctx.lineTo(1120, yPos + 70); ctx.stroke();
             }
 
-            drawMetricRow('⚡ MAX SPEED', `${data.maxSpeed} km/h`, '#00BCD4', 200);   // Cyan
+            drawMetricRow('⚡ MAX SPEED', `${data.maxSpeed} km/h`, '#00BCD4', 200);   
             drawMetricRow('🦅 GLIDE TIME (FLIGHT)', `${data.flightTime} min`, '#FFF', 300); 
-            drawMetricRow('🌊 TOTAL RIDES', `${waveCount} Waves (Longest: ${longestWave})`, '#D4AF37', 400); // Gold
+            drawMetricRow('🌊 TOTAL RIDES', `${waveCount} Waves (Longest: ${longestWave})`, '#D4AF37', 400); 
             drawMetricRow('🔋 TOTAL BATTERY ENGAGEMENT', `${data.motorTime} min`, '#888', 500);
 
-            // 7. Pop Open the Share Modal Image Container
             const imgUrl = canvas.toDataURL('image/png');
             const container = document.getElementById('imageContainer');
             container.innerHTML = `<img src="${imgUrl}" style="max-width:100%; height:auto; border:1px solid #444; border-radius:6px;" alt="Session Graphic"/>`;
@@ -368,7 +373,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Modal Close Action Control Hook
     document.getElementById('closeShareBtn').addEventListener('click', () => {
         document.getElementById('shareModal').style.display = 'none';
     });
