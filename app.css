@@ -1,6 +1,6 @@
 /* ==========================================================================
-   Swellpath - Precision Session Analytics (Dark Mode v1.5)
-   High-Contrast Layout & Dynamic Location Fixes
+   Swellpath - Precision Session Analytics (Dark Mode v1.6)
+   Enhanced Touch Targeting & High Contrast Map Layout Fixes
    ========================================================================== */
 
 :root {
@@ -117,18 +117,22 @@ body {
     font-size: 13px;
 }
 
-/* Drop Zone Styles */
+/* Dynamic Explicit File Upload Drop Target Frame Layout */
 .drop-zone {
     border: 2px dashed var(--border-color);
     border-radius: var(--border-radius);
     background: var(--card-bg);
-    padding: 48px 20px;
+    min-height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     text-align: center;
     cursor: pointer;
     transition: all 0.2s ease;
     margin-bottom: 20px;
+    padding: 20px;
     position: relative;
-    z-index: 5; 
+    z-index: 5;
 }
 
 .drop-zone:hover {
@@ -136,11 +140,17 @@ body {
     background: #1a1a1c;
 }
 
-.drop-zone-text {
-    font-size: 15px;
+.drop-zone-content {
+    font-size: 16px;
+    font-weight: 600;
     color: var(--text-secondary);
-    pointer-events: none; 
+    pointer-events: none;
+    width: 100%;
 }
+
+/* Default Display rules for media components visibility */
+.mobile-text { display: none; }
+.desktop-text { display: inline; }
 
 /* Accessible Hidden Upload Input Node */
 #fileInput {
@@ -152,7 +162,6 @@ body {
     overflow: hidden;
     clip: rect(0, 0, 0, 0);
     border: 0;
-    display: inline-block !important; 
 }
 
 /* Saved Sessions Panel */
@@ -471,8 +480,10 @@ input:checked + .slider:before {
         width: 100%;
     }
 
-    .mobile-text { display: block; }
-    .desktop-text { display: none; }
+    /* Fixed visibility state configurations */
+    .mobile-text { display: inline !important; }
+    .desktop-text { display: none !important; }
+    
     .instructions-grid { grid-template-columns: 1fr; }
 
     .saved-panel {
