@@ -116,6 +116,7 @@ document.addEventListener('DOMContentLoaded', function () {
         state.longestTrack = [];
         state.fastestTrack = []; 
         let currentRun = [], allRuns = [], totalD = 0;
+        let isCurrentlyOnWave = false;
 
         for (let i = 1; i < state.fullTrack.length; i++) {
             let prev = state.fullTrack[i-1], curr = state.fullTrack[i];
@@ -132,12 +133,40 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (!isOutbound) state.filteredTrack.push(curr);
 
-            if (!isOutbound && data.speeds[i] > 17 && angle > -145 && angle < -35) {
+            // Tuned Logic: Schmitt Trigger / Hysteresis speed thresholds
+            let speedCondition = false;
+            if (!isCurrentlyOnWave) {
+                // Trigger wave start at 15.5 km/h
+                if (data.speeds[i] >= 15.5) {
+                    speedCondition = true;
+                    isCurrentlyOnWave = true;
+                }
+            } else {
+                // Keep wave alive until speed drops under 12.0 km/h
+                if (data.speeds[i] >= 12.0) {
+                    speedCondition = true;
+                } else {
+                    isCurrentlyOnWave = false;
+                }
+            }
+
+            // Tuned Logic: Expanded directional safety corridor for carving
+            let directionCondition = (angle > -170 && angle < -10);
+
+            if (!isOutbound && speedCondition && directionCondition) {
                 currentRun.push({coord: curr, speed: data.speeds[i]});
             } else {
-                if (currentRun.length > 8) allRuns.push([...currentRun]); 
+                // Tuned Logic: Lower duration hurdle down to 4 points (~4 seconds)
+                if (currentRun.length >= 4) {
+                    allRuns.push([...currentRun]); 
+                }
                 currentRun = [];
+                isCurrentlyOnWave = false;
             }
+        }
+        // Catch trailing open run if it exists
+        if (currentRun.length >= 4) {
+            allRuns.push([...currentRun]);
         }
 
         let longestM = 0, maxWaveAvg = 0;
@@ -158,6 +187,8 @@ document.addEventListener('DOMContentLoaded', function () {
         state.waveTracks = allRuns.map(run => run.map(p => p.coord)).flat();
         document.getElementById('waveCount').textContent = allRuns.length;
         document.getElementById('longestWave').textContent = `${Math.round(longestM)} m`;
+        
+        document.getElementById('fastestWave').textContent = maxWaveAvg > 0 ? `${maxWaveAvg.toFixed(1)} km/h` : "0.0 km/h";
         document.getElementById('totalDistance').textContent = `${(totalD / 1000).toFixed(2)} km`;
     }
 
@@ -204,15 +235,17 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('flightTime').textContent = `${data.flightTime} min`;
         document.getElementById('motorTime').textContent = `${data.motorTime} min`;
         document.getElementById('maxSpeed').textContent = `${data.maxSpeed} km/h`;
-        document.getElementById('fastestWave').textContent = `${data.maxSpeed} km/h`;
 
-        // Clear and apply highlights
         document.querySelectorAll('.metric-card').forEach(c => c.classList.remove('longest-wave-card', 'fastest-wave-card'));
-        document.getElementById('longestWave').closest('.metric-card').classList.add('longest-wave-card');
-        document.getElementById('fastestWave').closest('.metric-card').classList.add('fastest-wave-card');
         
         calculateTracks(data);
         renderMap();
+
+        const longestCard = document.getElementById('longestWave').closest('.metric-card');
+        const fastestCard = document.getElementById('fastestWave').closest('.metric-card');
+        if (longestCard) longestCard.classList.add('longest-wave-card');
+        if (fastestCard) fastestCard.classList.add('fastest-wave-card');
+
         elements.dashboard.classList.remove('dashboard-hidden');
     }
 
@@ -238,12 +271,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (elements.shareBtn) {
         elements.shareBtn.addEventListener('click', function() {
-            const stats = `Swellpath Session:\n• Flight: ${document.getElementById('flightTime').textContent}\n• Motor: ${document.getElementById('motorTime').textContent}\n• Max: ${document.getElementById('maxSpeed').textContent}\n• Longest: ${document.getElementById('longestWave').textContent}\n• Waves: ${document.getElementById('waveCount').textContent}\n#FoilDrive #Swellpath`;
-            navigator.clipboard.writeText(stats).then(() => {
-                const originalText = this.textContent;
-                this.textContent = "✅ Copied";
-                setTimeout(() => { this.textContent = originalText; }, 2000);
-            });
+            const stats = `Swellpath Session:\n• Flight: ${document.getElementById('flightTime').textContent}\n• Motor: ${document.getElementById('motorTime').textContent}\n• Max Speed: ${document.getElementById('maxSpeed').textContent}\n• Longest Wave: ${document.getElementById('longestWave').textContent}\n• Fastest Wave: ${document.getElementById('fastestWave').textContent}\n• Waves Caught: ${document.getElementById('waveCount').textContent}\n#FoilDrive #Swellpath`;
+            
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(stats).then(() => {
+                    const originalText = this.textContent;
+                    this.textContent = "✅ Copied";
+                    setTimeout(() => { this.textContent = originalText; }, 2000);
+                }).catch(() => {
+                    alert(stats);
+                });
+            } else {
+                alert(stats);
+            }
         });
     }
 
