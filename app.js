@@ -91,12 +91,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
             let timeDiff = (times[i+1] - times[i]) / 1000;
             
-            // Motor time tracks total cumulative runtime under battery load (> 2.0 km/h)
+            // Motor time logs total cumulative time engine hours under battery load (> 2.0 km/h)
             if (finalSpeed > 2.0) {
                 motorSec += timeDiff;
             }
-            // Flight time gate set to 15.0 km/h to properly grab low-amplitude or small-day foiling
-            if (finalSpeed >= 15.0) {
+            // Tightened Fix: Shifted flight gate to 16.5 km/h to cleanly extract small-wave glide time
+            if (finalSpeed >= 16.5) {
                 flightSec += timeDiff;
             }
         }
@@ -140,28 +140,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (!isOutbound) state.filteredTrack.push(curr);
 
-            // Schmitt Trigger Hysteresis
+            // Tightened Fix: Schmitt Trigger thresholds tuned to eliminate taxi-acceleration overlaps
             let speedCondition = false;
             if (!isCurrentlyOnWave) {
-                if (data.speeds[i] >= 15.5) {
+                if (data.speeds[i] >= 16.5) { // Needs 16.5 km/h to kick off a wave run
                     speedCondition = true;
                     isCurrentlyOnWave = true;
                 }
             } else {
-                if (data.speeds[i] >= 12.0) {
+                if (data.speeds[i] >= 13.0) { // Will drop out if speed sinks beneath 13.0 km/h
                     speedCondition = true;
                 } else {
                     isCurrentlyOnWave = false;
                 }
             }
 
-            // Expanded directional corridor for carving return lines back down-wind/down-swell
             let directionCondition = (angle > -170 && angle < -10);
 
             if (!isOutbound && speedCondition && directionCondition) {
                 currentRun.push({coord: curr, speed: data.speeds[i]});
             } else {
-                if (currentRun.length >= 4) {
+                // Tightened Fix: Raised required data frame limit to 6 points (~6 seconds) to filter chatter
+                if (currentRun.length >= 6) {
                     allRuns.push([...currentRun]); 
                 }
                 currentRun = [];
@@ -169,7 +169,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
         
-        if (currentRun.length >= 4) {
+        if (currentRun.length >= 6) {
             allRuns.push([...currentRun]);
         }
 
