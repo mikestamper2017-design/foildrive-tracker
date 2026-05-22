@@ -108,21 +108,19 @@ document.addEventListener('DOMContentLoaded', function () {
         };
         reader.readAsText(file);
     }
+
     // --- 3. GPX PARSING & CALIBRATED PHYSICS (ALL-WEATHER XML ENGINE) ---
     function parseGPX(xmlString, fileName) {
-        // Sanitize string to handle compressed or malformed whitespace streams
         const cleanXmlString = xmlString.trim();
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(cleanXmlString, "text/xml");
         
-        // Fail-safe check for XML parsing issues
         if (xmlDoc.getElementsByTagName("parsererror").length > 0) {
             throw new Error("Invalid XML structural syntax.");
         }
 
         let lats = [], lons = [], times = [], rawSpeeds = [], calibratedSpeeds = [];
         
-        // 1. Core Metadata Extraction (Case-Insensitive Fallbacks)
         let tNodes = xmlDoc.getElementsByTagName("time");
         if (tNodes.length === 0) tNodes = xmlDoc.getElementsByTagName("Time");
         let sessionDate = tNodes.length > 0 ? new Date(tNodes[0].textContent) : new Date();
@@ -130,20 +128,16 @@ document.addEventListener('DOMContentLoaded', function () {
         let trkNameNode = xmlDoc.getElementsByTagName("name")[0] || xmlDoc.getElementsByTagName("Name")[0];
         let internalName = trkNameNode ? trkNameNode.textContent.trim() : "";
 
-        // 2. Trackpoint Target Identification (Strava, Garmin, and Custom Formats)
         let nodes = xmlDoc.getElementsByTagName("trkpt");
         if (nodes.length === 0) nodes = xmlDoc.getElementsByTagName("Trackpoint");
-        if (nodes.length === 0) nodes = xmlDoc.getElementsByTagName("wpt"); // Waypoint fallback
+        if (nodes.length === 0) nodes = xmlDoc.getElementsByTagName("wpt"); 
         
-        // 3. Coordinate Stream Extraction Loop
         for (let i = 0; i < nodes.length; i++) {
             let lat = null, lon = null;
             
-            // Try reading attributes first (Standard GPX)
             if (nodes[i].hasAttribute("lat")) lat = nodes[i].getAttribute("lat");
             if (nodes[i].hasAttribute("lon")) lon = nodes[i].getAttribute("lon");
             
-            // Try reading children nodes if attributes don't exist (Standard TCX format)
             if (!lat || !lon) {
                 lat = nodes[i].getElementsByTagName("LatitudeDegrees")[0]?.textContent || 
                       nodes[i].getElementsByTagName("lat")[0]?.textContent;
@@ -155,27 +149,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 lats.push(parseFloat(lat));
                 lons.push(parseFloat(lon));
                 
-                // Track down matching time signatures per coordinate point
                 let t = nodes[i].getElementsByTagName("time")[0] || 
                         nodes[i].getElementsByTagName("Time")[0];
                 times.push(t ? new Date(t.textContent).getTime() : 0);
             }
         }
 
-        // Emergency Break: If data arrays remain empty, notify user immediately
         if (lats.length === 0) {
             throw new Error("No GPS coordinates located in file. Check file export format.");
         }
 
-        // 4. Calibrated Velocity and Math Processing
         for (let i = 1; i < lats.length; i++) {
             let d = calculateDistance(lats[i-1], lons[i-1], lats[i], lons[i]);
             let diff = (times[i] - times[i-1]) / 1000;
             let s = diff > 0 ? (d / diff) * 3.6 : 0;
-            rawSpeeds.push(s > 65 ? 0 : s); // Discard anomalies over 65km/h
+            rawSpeeds.push(s > 65 ? 0 : s); 
         }
 
-        // Generate baseline values if track contains single node entries
         if (rawSpeeds.length === 0) rawSpeeds.push(0);
 
         let motorSec = 0, flightSec = 0;
@@ -183,17 +173,20 @@ document.addEventListener('DOMContentLoaded', function () {
             let window = rawSpeeds.slice(Math.max(0, i-2), i+3);
             window.sort((a, b) => a - b);
             let median = window[Math.floor(window.length / 2)] || 0;
-            let finalSpeed = median * 0.92; // Calibration scalar applied
+            let finalSpeed = median * 0.92; 
             calibratedSpeeds.push(finalSpeed);
 
-            let timeDiff = (times[i+1] - times[i]) / 1000;
-            if (isNaN(timeDiff) || timeDiff <= 0) timeDiff = 1; // Safeguard clock steps
+            // FIXED: Safeguard array length check against the final index element lookahead step
+            let timeDiff = 1;
+            if (i < times.length - 1) {
+                timeDiff = (times[i+1] - times[i]) / 1000;
+            }
+            if (isNaN(timeDiff) || timeDiff <= 0) timeDiff = 1; 
             
             if (finalSpeed > 2.0) motorSec += timeDiff;
             if (finalSpeed >= 16.5) flightSec += timeDiff;
         }
 
-        // 5. Normalizing File Headers for Display Selection
         let displayName = fileName.split('.')[0].replace(/_/g, ' ').replace(/-/g, ' ');
         if (internalName && internalName.toLowerCase() !== "surfing" && internalName.toLowerCase() !== "gpx export") {
             displayName = internalName;
@@ -212,6 +205,7 @@ document.addEventListener('DOMContentLoaded', function () {
         localStorage.setItem(key, JSON.stringify(data));
         return key;
     }
+
     // --- 4. TRACK & WAVE ANALYTICS ---
     function calculateTracks(data) {
         state.fullTrack = data.lats.map((v, i) => [data.lats[i], data.lons[i]]);
@@ -368,11 +362,9 @@ document.addEventListener('DOMContentLoaded', function () {
             localStorage.setItem('swellpath_pref_foil', foilVal);
             localStorage.setItem('swellpath_pref_wing', wingVal);
 
-            // Soft Slate Charcoal background instead of harsh true-black for visual separation
             ctx.fillStyle = '#16161a'; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Technical Grid Overlay
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
             ctx.lineWidth = 1;
             for (let x = 0; x < canvas.width; x += 50) {
@@ -399,7 +391,6 @@ document.addEventListener('DOMContentLoaded', function () {
             function scaleX(lon) { return xOffset + (lon - minLon) * scale; }
             function scaleY(lat) { return (yOffset + mapH) - (lat - minLat) * scale; }
 
-            // Make raw track high-contrast bright silver-white line pathing
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
             ctx.lineWidth = 3.5;
             ctx.lineCap = 'round';
@@ -411,7 +402,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             ctx.stroke();
 
-            // Highlight Longest Wave Run with deep neon glow shadows
             if (state.longestTrack && state.longestTrack.length > 0) {
                 ctx.save();
                 ctx.strokeStyle = '#D4AF37'; 
@@ -427,17 +417,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 ctx.restore();
             }
 
-            // Text Layout Setup Headers
             ctx.textBaseline = 'top';
             ctx.font = 'bold 22px monospace';
             ctx.fillStyle = '#888892';
             ctx.fillText('// SWELLPATH PRECISION LABS', 80, 60);
 
-            // Main Title String
             ctx.font = 'bold 44px sans-serif';
             ctx.fillStyle = '#FFF';
             
-            // Check if title has a custom label or generic surfing string to separate subtitle line values
             let displayTitle = data.displayName;
             let displaySub = "";
             if (displayTitle.toLowerCase().includes("afternoon surfing") || displayTitle.toLowerCase().includes("morning surfing")) {
@@ -454,12 +441,10 @@ document.addEventListener('DOMContentLoaded', function () {
             ctx.fillText(`${data.dateStr}`, canvas.width - 80, 108);
             ctx.textAlign = 'left'; 
 
-            // Separation bar line rules
             ctx.strokeStyle = '#2C2C2E';
             ctx.lineWidth = 2;
             ctx.beginPath(); ctx.moveTo(80, 680); ctx.lineTo(canvas.width - 80, 680); ctx.stroke();
 
-            // Performance Hero Section Details
             ctx.font = 'bold 20px monospace';
             ctx.fillStyle = '#D4AF37';
             ctx.fillText(`// PERFORMANCE ANALYSIS — ${displaySub.toUpperCase()}`, 80, 720);
@@ -474,7 +459,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
             ctx.beginPath(); ctx.moveTo(80, 890); ctx.lineTo(canvas.width - 80, 890); ctx.stroke();
 
-            // Secondary Parameter Metrics Items Layout Grid rows
             function drawSubMetric(label, value, xPos, yPos) {
                 ctx.font = '16px monospace';
                 ctx.fillStyle = '#888892';
@@ -491,7 +475,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
             ctx.beginPath(); ctx.moveTo(80, 1040); ctx.lineTo(canvas.width - 80, 1040); ctx.stroke();
 
-            // Gear Bag Specifications Display Configuration
             if (fdVal || foilVal || wingVal) {
                 ctx.font = 'bold 18px monospace';
                 ctx.fillStyle = '#888892';
@@ -518,7 +501,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 ctx.fillText('Tracked with Swellpath Unassisted Wave Processing Engine.', 80, 1100);
             }
 
-            // Branding Section Footnotes Stamps
             ctx.strokeStyle = '#2C2C2E';
             ctx.beginPath(); ctx.moveTo(80, 1200); ctx.lineTo(canvas.width - 80, 1200); ctx.stroke();
 
