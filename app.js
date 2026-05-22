@@ -1,15 +1,6 @@
 document.addEventListener('DOMContentLoaded', function () {
-    const elements = {
-        fileInput: document.getElementById('fileInput'),
-        dropZone: document.getElementById('dropZone'),
-        dashboard: document.getElementById('dashboard'),
-        toggleWaveOnly: document.getElementById('toggleWaveOnly'),
-        savedSelect: document.getElementById('savedSessions'),
-        loadSessionBtn: document.getElementById('loadSessionBtn'),
-        lockHeadingBtn: document.getElementById('lockHeadingBtn'),
-        shareBtn: document.getElementById('shareBtn')
-    };
-
+    
+    // --- 1. SYSTEM STATE ---
     let state = {
         map: null,
         fullTrack: [],
@@ -21,37 +12,77 @@ document.addEventListener('DOMContentLoaded', function () {
         lockedHeading: null
     };
 
+    // Initialize the app view drops
     populateSavedSessions();
 
-    // --- 1. USER INTERACTION ---
-    elements.toggleWaveOnly.addEventListener('change', () => { 
-        if (state.currentData) renderMap(); 
-    });
+    // Safely pull elements on-demand to prevent script failure if an ID is missing or delayed
+    function getEl(id) { return document.getElementById(id); }
 
-    elements.lockHeadingBtn.addEventListener('click', function() {
-        if (state.fullTrack.length < 10) return;
-        if (state.lockedHeading !== null) {
-            state.lockedHeading = null;
-            this.textContent = `Lock Outbound`;
-            this.style.background = 'transparent';
-            this.style.color = 'var(--accent-color)';
-            this.style.border = '1px solid var(--border-color)';
-        } else {
-            const start = state.fullTrack[0];
-            const end = state.fullTrack[Math.min(30, state.fullTrack.length - 1)];
-            state.lockedHeading = calculateBearing(start[0], start[1], end[0], end[1]);
-            this.textContent = `Locked: ${Math.round(state.lockedHeading)}°`;
-            this.style.background = 'var(--brand-gold)';
-            this.style.color = '#fff';
-            this.style.border = 'none';
-        }
-        if (state.currentData) {
-            calculateTracks(state.currentData);
-            renderMap();
-        }
-    });
+    // --- 2. USER INTERACTION INTERFACES ---
+    const toggleWaveOnly = getEl('toggleWaveOnly');
+    if (toggleWaveOnly) {
+        toggleWaveOnly.addEventListener('change', () => { 
+            if (state.currentData) renderMap(); 
+        });
+    }
 
-    // --- 2. GPX PARSING & CALIBRATED PHYSICS ---
+    const lockHeadingBtn = getEl('lockHeadingBtn');
+    if (lockHeadingBtn) {
+        lockHeadingBtn.addEventListener('click', function() {
+            if (state.fullTrack.length < 10) return;
+            if (state.lockedHeading !== null) {
+                state.lockedHeading = null;
+                this.textContent = `Lock Outbound Heading`;
+                this.style.background = 'transparent';
+                this.style.color = 'var(--text-primary)';
+                this.style.border = '1px solid var(--border-color)';
+            } else {
+                const start = state.fullTrack[0];
+                const end = state.fullTrack[Math.min(30, state.fullTrack.length - 1)];
+                state.lockedHeading = calculateBearing(start[0], start[1], end[0], end[1]);
+                this.textContent = `Locked: ${Math.round(state.lockedHeading)}°`;
+                this.style.background = '#D4AF37'; // Gold fill
+                this.style.color = '#111';
+                this.style.border = 'none';
+            }
+            if (state.currentData) {
+                calculateTracks(state.currentData);
+                renderMap();
+            }
+        });
+    }
+
+    const loadSessionBtn = getEl('loadSessionBtn');
+    if (loadSessionBtn) {
+        loadSessionBtn.addEventListener('click', () => {
+            const savedSessions = getEl('savedSessions');
+            if (savedSessions && savedSessions.value) {
+                loadSession(savedSessions.value);
+            }
+        });
+    }
+
+    const dropZone = getEl('dropZone');
+    const fileInput = getEl('fileInput');
+    if (dropZone && fileInput) {
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const key = parseGPX(ev.target.result, file.name);
+                    populateSavedSessions();
+                    const savedSessions = getEl('savedSessions');
+                    if (savedSessions) savedSessions.value = key;
+                    loadSession(key);
+                };
+                reader.readAsText(file);
+            }
+        });
+    }
+
+    // --- 3. GPX PARSING & CALIBRATED PHYSICS ---
     function parseGPX(xmlString, fileName) {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlString, "text/xml");
@@ -90,13 +121,8 @@ document.addEventListener('DOMContentLoaded', function () {
             calibratedSpeeds.push(finalSpeed);
 
             let timeDiff = (times[i+1] - times[i]) / 1000;
-            
-            if (finalSpeed > 2.0) {
-                motorSec += timeDiff;
-            }
-            if (finalSpeed >= 16.5) {
-                flightSec += timeDiff;
-            }
+            if (finalSpeed > 2.0) motorSec += timeDiff;
+            if (finalSpeed >= 16.5) flightSec += timeDiff;
         }
 
         const data = {
@@ -113,7 +139,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return key;
     }
 
-    // --- 3. TRACK & WAVE ANALYTICS ---
+    // --- 4. TRACK & WAVE ANALYTICS ---
     function calculateTracks(data) {
         state.fullTrack = data.lats.map((v, i) => [data.lats[i], data.lons[i]]);
         state.filteredTrack = [];
@@ -145,11 +171,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     isCurrentlyOnWave = true;
                 }
             } else {
-                if (data.speeds[i] >= 13.0) { 
-                    speedCondition = true;
-                } else {
-                    isCurrentlyOnWave = false;
-                }
+                if (data.speeds[i] >= 13.0) speedCondition = true;
+                else isCurrentlyOnWave = false;
             }
 
             let directionCondition = (angle > -170 && angle < -10);
@@ -157,17 +180,13 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!isOutbound && speedCondition && directionCondition) {
                 currentRun.push({coord: curr, speed: data.speeds[i]});
             } else {
-                if (currentRun.length >= 6) {
-                    allRuns.push([...currentRun]); 
-                }
+                if (currentRun.length >= 6) allRuns.push([...currentRun]); 
                 currentRun = [];
                 isCurrentlyOnWave = false;
             }
         }
         
-        if (currentRun.length >= 6) {
-            allRuns.push([...currentRun]);
-        }
+        if (currentRun.length >= 6) allRuns.push([...currentRun]);
 
         let longestM = 0, maxWaveAvg = 0;
         allRuns.forEach(run => {
@@ -185,21 +204,22 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         state.waveTracks = allRuns.map(run => run.map(p => p.coord)).flat();
-        document.getElementById('waveCount').textContent = allRuns.length;
-        document.getElementById('longestWave').textContent = `${Math.round(longestM)} m`;
         
-        document.getElementById('fastestWave').textContent = maxWaveAvg > 0 ? `${maxWaveAvg.toFixed(1)} km/h` : "0.0 km/h";
-        document.getElementById('totalDistance').textContent = `${(totalD / 1000).toFixed(2)} km`;
+        if (getEl('waveCount')) getEl('waveCount').textContent = allRuns.length;
+        if (getEl('longestWave')) getEl('longestWave').textContent = `${Math.round(longestM)} m`;
+        if (getEl('fastestWave')) getEl('fastestWave').textContent = maxWaveAvg > 0 ? `${maxWaveAvg.toFixed(1)} km/h` : "0.0 km/h";
+        if (getEl('totalDistance')) getEl('totalDistance').textContent = `${(totalD / 1000).toFixed(2)} km`;
     }
 
-    // --- 4. MAP RENDERING ---
+    // --- 5. MAP RENDERING ENGINE ---
     function renderMap() {
-        if (!state.fullTrack.length) return;
+        if (!state.fullTrack.length || !getEl('mapContainer')) return;
         if (state.map) { state.map.remove(); state.map = null; }
+        
         state.map = L.map('mapContainer').setView(state.fullTrack[0], 14);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
 
-        const showWavesOnly = elements.toggleWaveOnly.checked;
+        const showWavesOnly = toggleWaveOnly ? toggleWaveOnly.checked : false;
         const bgTrack = (state.lockedHeading !== null) ? state.filteredTrack : state.fullTrack;
         
         if (!showWavesOnly) L.polyline(bgTrack, {color: '#A0A0A0', weight: 2, opacity: 0.4}).addTo(state.map);
@@ -211,9 +231,12 @@ document.addEventListener('DOMContentLoaded', function () {
         state.map.fitBounds(L.latLngBounds(bounds));
     }
 
-    // --- 5. UI & PERSISTENCE ---
+    // --- 6. UI MANAGEMENT & PERSISTENCE ---
     function populateSavedSessions() {
-        elements.savedSelect.innerHTML = '<option value="">-- Saved Sessions --</option>';
+        const savedSelect = getEl('savedSessions');
+        if (!savedSelect) return;
+        
+        savedSelect.innerHTML = '<option value="">-- Saved Sessions --</option>';
         let keys = Object.keys(localStorage).filter(k => k.startsWith('Swellpath_'))
                     .sort((a,b) => b.split('_')[1] - a.split('_')[1]);
 
@@ -222,7 +245,7 @@ document.addEventListener('DOMContentLoaded', function () {
             let opt = document.createElement('option');
             opt.value = key;
             opt.textContent = `${data.dateStr} - ${data.displayName}`;
-            elements.savedSelect.appendChild(opt);
+            savedSelect.appendChild(opt);
         });
     }
 
@@ -232,45 +255,25 @@ document.addEventListener('DOMContentLoaded', function () {
         state.currentData = data;
         state.lockedHeading = null;
         
-        document.getElementById('flightTime').textContent = `${data.flightTime} min`;
-        document.getElementById('motorTime').textContent = `${data.motorTime} min`;
-        document.getElementById('maxSpeed').textContent = `${data.maxSpeed} km/h`;
+        if (getEl('flightTime')) getEl('flightTime').textContent = `${data.flightTime} min`;
+        if (getEl('motorTime')) getEl('motorTime').textContent = `${data.motorTime} min`;
+        if (getEl('maxSpeed')) getEl('maxSpeed').textContent = `${data.maxSpeed} km/h`;
 
         document.querySelectorAll('.metric-card').forEach(c => c.classList.remove('longest-wave-card', 'fastest-wave-card'));
         
         calculateTracks(data);
         renderMap();
 
-        const longestCard = document.getElementById('longestWave').closest('.metric-card');
-        const fastestCard = document.getElementById('fastestWave').closest('.metric-card');
-        if (longestCard) longestCard.classList.add('longest-wave-card');
-        if (fastestCard) fastestCard.classList.add('fastest-wave-card');
+        if (getEl('longestWave')) getEl('longestWave').closest('.metric-card').classList.add('longest-wave-card');
+        if (getEl('fastestWave')) getEl('fastestWave').closest('.metric-card').classList.add('fastest-wave-card');
 
-        elements.dashboard.classList.remove('dashboard-hidden');
+        if (getEl('dashboard')) getEl('dashboard').classList.remove('dashboard-hidden');
     }
 
-    // --- 6. SYSTEM EVENTS: UPGRADED CANVAS SHARE GENERATOR ---
-    elements.loadSessionBtn.addEventListener('click', () => {
-        if (elements.savedSelect.value) loadSession(elements.savedSelect.value);
-    });
-
-    elements.dropZone.addEventListener('click', () => elements.fileInput.click());
-    elements.fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                const key = parseGPX(ev.target.result, file.name);
-                populateSavedSessions();
-                elements.savedSelect.value = key;
-                loadSession(key);
-            };
-            reader.readAsText(file);
-        }
-    });
-
-    if (elements.shareBtn) {
-        elements.shareBtn.addEventListener('click', function() {
+    // --- 7. CANVAS SHARE BADGE GENERATOR ---
+    const shareBtn = getEl('shareBtn');
+    if (shareBtn) {
+        shareBtn.addEventListener('click', function() {
             if (!state.currentData || !state.fullTrack.length) {
                 alert("Please load a session before sharing!");
                 return;
@@ -282,12 +285,14 @@ document.addEventListener('DOMContentLoaded', function () {
             const ctx = canvas.getContext('2d');
 
             const data = state.currentData;
-            const waveCount = document.getElementById('waveCount').textContent;
-            const longestWave = document.getElementById('longestWave').textContent;
+            const waveCount = getEl('waveCount') ? getEl('waveCount').textContent : '0';
+            const longestWave = getEl('longestWave') ? getEl('longestWave').textContent : '0 m';
 
+            // Background matte black
             ctx.fillStyle = '#0a0a0c'; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+            // Left Background Grid lines
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
             ctx.lineWidth = 1;
             for (let x = 0; x < 550; x += 40) {
@@ -297,6 +302,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(550, y); ctx.stroke();
             }
 
+            // Bound Map Calculations
             let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
             state.fullTrack.forEach(pt => {
                 if (pt[0] < minLat) minLat = pt[0]; if (pt[0] > maxLat) maxLat = pt[0];
@@ -311,6 +317,7 @@ document.addEventListener('DOMContentLoaded', function () {
             function scaleX(lon) { return padding + ((lon - minLon) / lonRange) * (mapW - padding * 2); }
             function scaleY(lat) { return (canvas.height - padding) - ((lat - minLat) / latRange) * (mapH - padding * 2); }
 
+            // Base tracking path line
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -321,6 +328,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             ctx.stroke();
 
+            // Highlight Longest Ride track overlay
             if (state.longestTrack && state.longestTrack.length > 0) {
                 ctx.strokeStyle = '#D4AF37'; 
                 ctx.lineWidth = 5;
@@ -333,10 +341,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 ctx.stroke();
             }
 
+            // Layout Split Line
             ctx.strokeStyle = '#222226';
             ctx.lineWidth = 2;
             ctx.beginPath(); ctx.moveTo(580, 50); ctx.lineTo(580, canvas.height - 50); ctx.stroke(); 
 
+            // Typography Metrics Labels
             ctx.textBaseline = 'top';
             ctx.font = 'bold 20px monospace';
             ctx.fillStyle = '#666';
@@ -365,24 +375,30 @@ document.addEventListener('DOMContentLoaded', function () {
             drawMetricRow('🌊 TOTAL RIDES', `${waveCount} Waves (Longest: ${longestWave})`, '#D4AF37', 400); 
             drawMetricRow('🔋 TOTAL BATTERY ENGAGEMENT', `${data.motorTime} min`, '#888', 500);
 
+            // Print output target inside modal window box
             const imgUrl = canvas.toDataURL('image/png');
-            const container = document.getElementById('imageContainer');
-            container.innerHTML = `<img src="${imgUrl}" style="max-width:100%; height:auto; border:1px solid #444; border-radius:6px;" alt="Session Graphic"/>`;
-            
-            document.getElementById('shareModal').style.display = 'flex';
+            const container = getEl('imageContainer');
+            if (container) {
+                container.innerHTML = `<img src="${imgUrl}" style="max-width:100%; height:auto; border:1px solid #444; border-radius:6px;" alt="Session Graphic"/>`;
+            }
+            if (getEl('shareModal')) getEl('shareModal').style.display = 'flex';
         });
     }
 
-    document.getElementById('closeShareBtn').addEventListener('click', () => {
-        document.getElementById('shareModal').style.display = 'none';
-    });
+    const closeShareBtn = getEl('closeShareBtn');
+    if (closeShareBtn) {
+        closeShareBtn.addEventListener('click', () => {
+            if (getEl('shareModal')) getEl('shareModal').style.display = 'none';
+        });
+    }
 
-    // --- 7. HELPERS ---
+    // --- 8. GEOSPATIAL MATH HELPERS ---
     function calculateDistance(lat1, lon1, lat2, lon2) {
         const R = 6371e3, p = Math.PI/180;
         const a = 0.5 - Math.cos((lat2-lat1)*p)/2 + Math.cos(lat1*p)*Math.cos(lat2*p)*(1-Math.cos((lon2-lon1)*p))/2;
         return R * 2 * Math.asin(Math.sqrt(a));
     }
+    
     function calculateBearing(lat1, lon1, lat2, lon2) {
         const rad = Math.PI / 180;
         const y = Math.sin((lon2 - lon1) * rad) * Math.cos(lat2 * rad);
