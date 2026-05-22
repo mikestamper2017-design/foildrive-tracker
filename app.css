@@ -1,6 +1,6 @@
 /* ==========================================================================
-   Swellpath - Precision Session Analytics (Dark Mode v1.7)
-   Enhanced Touch Targeting & High Contrast Map Layout Fixes
+   Swellpath - Precision Session Analytics (Dark Mode v1.4)
+   Unified Production Layout & Interaction Fixes
    ========================================================================== */
 
 :root {
@@ -117,21 +117,18 @@ body {
     font-size: 13px;
 }
 
-/* Dynamic Explicit File Upload Drop Target Frame Layout */
+/* Drop Zone Styles */
 .drop-zone {
     border: 2px dashed var(--border-color);
     border-radius: var(--border-radius);
     background: var(--card-bg);
-    min-height: 120px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    padding: 48px 20px;
     text-align: center;
+    cursor: pointer;
     transition: all 0.2s ease;
     margin-bottom: 20px;
-    padding: 20px;
-    position: relative; /* Essential container anchor */
-    overflow: hidden;
+    position: relative;
+    z-index: 5; 
 }
 
 .drop-zone:hover {
@@ -139,28 +136,24 @@ body {
     background: #1a1a1c;
 }
 
-.drop-zone-content {
-    font-size: 16px;
-    font-weight: 600;
+.drop-zone-text {
+    font-size: 15px;
     color: var(--text-secondary);
-    z-index: 1; /* Sits cleanly beneath the invisible touch area */
+    pointer-events: none; 
 }
 
-/* Bulletproof Native Overlay Rule - Maximizes Hit Targets Across All Touchscreens */
+/* Accessible Hidden Upload Input Node */
 #fileInput {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    opacity: 0; /* Keeps it completely invisible but perfectly active */
-    cursor: pointer;
-    z-index: 10; /* Guarantees it intercepts the tap target on iOS & Android */
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+    display: inline-block !important; 
 }
-
-/* Default Display rules for media components visibility */
-.mobile-text { display: none; }
-.desktop-text { display: inline; }
 
 /* Saved Sessions Panel */
 .saved-panel {
@@ -478,10 +471,8 @@ input:checked + .slider:before {
         width: 100%;
     }
 
-    /* Fixed visibility state configurations */
-    .mobile-text { display: inline !important; }
-    .desktop-text { display: none !important; }
-    
+    .mobile-text { display: block; }
+    .desktop-text { display: none; }
     .instructions-grid { grid-template-columns: 1fr; }
 
     .saved-panel {
