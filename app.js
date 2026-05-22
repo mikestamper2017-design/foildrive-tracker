@@ -110,72 +110,29 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // --- 3. GPX PARSING & CALIBRATED PHYSICS (ALL-WEATHER XML ENGINE) ---
-    function parseGPX(xmlString, fileName) {
-        const cleanXmlString = xmlString.trim();
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(cleanXmlString, "text/xml");
-        
-        if (xmlDoc.getElementsByTagName("parsererror").length > 0) {
-            throw new Error("Invalid XML structural syntax.");
-        }
-
-        let lats = [], lons = [], times = [], rawSpeeds = [], calibratedSpeeds = [];
-        
-        let tNodes = xmlDoc.getElementsByTagName("time");
-        if (tNodes.length === 0) tNodes = xmlDoc.getElementsByTagName("Time");
-        let sessionDate = tNodes.length > 0 ? new Date(tNodes[0].textContent) : new Date();
-
-        let trkNameNode = xmlDoc.getElementsByTagName("name")[0] || xmlDoc.getElementsByTagName("Name")[0];
-        let internalName = trkNameNode ? trkNameNode.textContent.trim() : "";
-
-        let nodes = xmlDoc.getElementsByTagName("trkpt");
-        if (nodes.length === 0) nodes = xmlDoc.getElementsByTagName("Trackpoint");
-        if (nodes.length === 0) nodes = xmlDoc.getElementsByTagName("wpt"); 
-        
-        for (let i = 0; i < nodes.length; i++) {
-            let lat = null, lon = null;
-            
-            if (nodes[i].hasAttribute("lat")) lat = nodes[i].getAttribute("lat");
-            if (nodes[i].hasAttribute("lon")) lon = nodes[i].getAttribute("lon");
-            
-            if (!lat || !lon) {
-                lat = nodes[i].getElementsByTagName("LatitudeDegrees")[0]?.textContent || 
-                      nodes[i].getElementsByTagName("lat")[0]?.textContent;
-                lon = nodes[i].getElementsByTagName("LongitudeDegrees")[0]?.textContent || 
-                      nodes[i].getElementsByTagName("lon")[0]?.textContent;
-            }
-            
-            if (lat && lon) {
-                lats.push(parseFloat(lat));
-                lons.push(parseFloat(lon));
-                
-                let t = nodes[i].getElementsByTagName("time")[0] || 
-                        nodes[i].getElementsByTagName("Time")[0];
-                times.push(t ? new Date(t.textContent).getTime() : 0);
-            }
-        }
-
-        if (lats.length === 0) {
-            throw new Error("No GPS coordinates located in file. Check file export format.");
-        }
-
-        for (let i = 1; i < lats.length; i++) {
-            let d = calculateDistance(lats[i-1], lons[i-1], lats[i], lons[i]);
-            let diff = (times[i] - times[i-1]) / 1000;
-            let s = diff > 0 ? (d / diff) * 3.6 : 0;
-            rawSpeeds.push(s > 65 ? 0 : s); 
-        }
-
+        // Generate baseline values if track contains single node entries
         if (rawSpeeds.length === 0) rawSpeeds.push(0);
 
         let motorSec = 0, flightSec = 0;
+        
+        // Restore index targeting to step cleanly alongside rawSpeeds arrays
         for (let i = 0; i < rawSpeeds.length; i++) {
             let window = rawSpeeds.slice(Math.max(0, i-2), i+3);
             window.sort((a, b) => a - b);
             let median = window[Math.floor(window.length / 2)] || 0;
-            let finalSpeed = median * 0.92; 
+            let finalSpeed = median * 0.92; // Calibration scalar applied
             calibratedSpeeds.push(finalSpeed);
 
+            // RESTORED CONCEPT: Calculate looking backward to eliminate lookahead undefined drops
+            let timeDiff = 1;
+            if (times[i+1] !== undefined && times[i] !== undefined) {
+                timeDiff = (times[i+1] - times[i]) / 1000;
+            }
+            if (isNaN(timeDiff) || timeDiff <= 0) timeDiff = 1; // Safeguard clock steps
+            
+            if (finalSpeed > 2.0) motorSec += timeDiff;
+            if (finalSpeed >= 16.5) flightSec += timeDiff;
+        }
             // FIXED: Safeguard array length check against the final index element lookahead step
             let timeDiff = 1;
             if (i < times.length - 1) {
