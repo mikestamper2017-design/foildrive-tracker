@@ -253,43 +253,125 @@ document.addEventListener('DOMContentLoaded', function () {
         elements.dashboard.classList.remove('dashboard-hidden');
     }
 
-    // --- 6. SYSTEM EVENTS ---
-    elements.loadSessionBtn.addEventListener('click', () => {
-        if (elements.savedSelect.value) loadSession(elements.savedSelect.value);
-    });
-
-    elements.dropZone.addEventListener('click', () => elements.fileInput.click());
-    elements.fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-                const key = parseGPX(ev.target.result, file.name);
-                populateSavedSessions();
-                elements.savedSelect.value = key;
-                loadSession(key);
-            };
-            reader.readAsText(file);
-        }
-    });
-
+   // --- 6. SYSTEM EVENTS: UPGRADED CANVAS SHARE GENERATOR ---
     if (elements.shareBtn) {
         elements.shareBtn.addEventListener('click', function() {
-            const stats = `Swellpath Session:\n• Flight: ${document.getElementById('flightTime').textContent}\n• Motor: ${document.getElementById('motorTime').textContent}\n• Max Speed: ${document.getElementById('maxSpeed').textContent}\n• Longest Wave: ${document.getElementById('longestWave').textContent}\n• Fastest Wave: ${document.getElementById('fastestWave').textContent}\n• Waves Caught: ${document.getElementById('waveCount').textContent}\n#FoilDrive #Swellpath`;
-            
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(stats).then(() => {
-                    const originalText = this.textContent;
-                    this.textContent = "✅ Copied";
-                    setTimeout(() => { this.textContent = originalText; }, 2000);
-                }).catch(() => {
-                    alert(stats);
-                });
-            } else {
-                alert(stats);
+            if (!state.currentData || !state.fullTrack.length) {
+                alert("Please load a session before sharing!");
+                return;
             }
+
+            // 1. Create the off-screen canvas (16:9 aspect ratio)
+            const canvas = document.createElement('canvas');
+            canvas.width = 1200;
+            canvas.height = 675;
+            const ctx = canvas.getContext('2d');
+
+            const data = state.currentData;
+            const waveCount = document.getElementById('waveCount').textContent;
+            const longestWave = document.getElementById('longestWave').textContent;
+
+            // 2. Draw Background Base
+            ctx.fillStyle = '#0a0a0c'; // Deep, premium matte black
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 3. Draw Decorative Grid Lines (Left Side Map Backdrop)
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < 550; x += 40) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += 40) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(550, y); ctx.stroke();
+            }
+
+            // 4. Draw Minimalist GPS Route Track
+            let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
+            state.fullTrack.forEach(pt => {
+                if (pt[0] < minLat) minLat = pt[0]; if (pt[0] > maxLat) maxLat = pt[0];
+                if (pt[1] < minLon) minLon = pt[1]; if (pt[1] > maxLon) maxLon = pt[1];
+            });
+
+            const latRange = maxLat - minLat;
+            const lonRange = maxLon - minLon;
+            const padding = 60;
+            const mapW = 480, mapH = 500;
+
+            function scaleX(lon) { return padding + ((lon - minLon) / lonRange) * (mapW - padding * 2); }
+            function scaleY(lat) { return (canvas.height - padding) - ((lat - minLat) / latRange) * (mapH - padding * 2); }
+
+            // Draw full background gray track line
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            state.fullTrack.forEach((pt, idx) => {
+                const x = scaleX(pt[1]);
+                const y = scaleY(pt[0]);
+                if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            // Highlight Longest Wave Overlaid in Brand Gold
+            if (state.longestTrack && state.longestTrack.length > 0) {
+                ctx.strokeStyle = '#D4AF37'; // Brand Gold
+                ctx.lineWidth = 5;
+                ctx.beginPath();
+                state.longestTrack.forEach((pt, idx) => {
+                    const x = scaleX(pt[1]);
+                    const y = scaleY(pt[0]);
+                    if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                });
+                ctx.stroke();
+            }
+
+            // 5. Draw Content Dividers
+            ctx.strokeStyle = '#222226';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(580, 50); ctx.lineTo(580, canvas.height - 50); ctx.stroke(); // Vertical split
+
+            // 6. Draw Text Header & Telemetry Data (Right Side)
+            ctx.textBaseline = 'top';
+            
+            ctx.font = 'bold 20px monospace';
+            ctx.fillStyle = '#666';
+            ctx.fillText('// SWELLPATH METRICS', 630, 75);
+
+            ctx.font = '32px sans-serif';
+            ctx.fillStyle = '#FFF';
+            ctx.fillText(`${data.dateStr} — ${data.displayName}`, 630, 110);
+
+            function drawMetricRow(label, value, color, yPos) {
+                ctx.font = '16px monospace';
+                ctx.fillStyle = '#888';
+                ctx.fillText(label, 630, yPos);
+
+                ctx.font = 'bold 36px sans-serif';
+                ctx.fillStyle = color;
+                ctx.fillText(value, 630, yPos + 22);
+
+                ctx.strokeStyle = '#1c1c22';
+                ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(630, yPos + 70); ctx.lineTo(1120, yPos + 70); ctx.stroke();
+            }
+
+            drawMetricRow('⚡ MAX SPEED', `${data.maxSpeed} km/h`, '#00BCD4', 200);   // Cyan
+            drawMetricRow('🦅 GLIDE TIME (FLIGHT)', `${data.flightTime} min`, '#FFF', 300); 
+            drawMetricRow('🌊 TOTAL RIDES', `${waveCount} Waves (Longest: ${longestWave})`, '#D4AF37', 400); // Gold
+            drawMetricRow('🔋 TOTAL BATTERY ENGAGEMENT', `${data.motorTime} min`, '#888', 500);
+
+            // 7. Pop Open the Share Modal Image Container
+            const imgUrl = canvas.toDataURL('image/png');
+            const container = document.getElementById('imageContainer');
+            container.innerHTML = `<img src="${imgUrl}" style="max-width:100%; height:auto; border:1px solid #444; border-radius:6px;" alt="Session Graphic"/>`;
+            
+            document.getElementById('shareModal').style.display = 'flex';
         });
     }
+
+    // Modal Close Action Control Hook
+    document.getElementById('closeShareBtn').addEventListener('click', () => {
+        document.getElementById('shareModal').style.display = 'none';
+    });
 
     // --- 7. HELPERS ---
     function calculateDistance(lat1, lon1, lat2, lon2) {
