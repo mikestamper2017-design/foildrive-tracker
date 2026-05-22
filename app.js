@@ -94,6 +94,10 @@ document.addEventListener('DOMContentLoaded', function () {
         let tNodes = xmlDoc.getElementsByTagName("time");
         let sessionDate = tNodes.length > 0 ? new Date(tNodes[0].textContent) : new Date();
 
+        // Extract internal track name from metadata if it exists
+        let trkNameNode = xmlDoc.getElementsByTagName("name")[0];
+        let internalName = trkNameNode ? trkNameNode.textContent.trim() : "";
+
         let nodes = xmlDoc.getElementsByTagName("trkpt").length > 0 ? 
                     xmlDoc.getElementsByTagName("trkpt") : xmlDoc.getElementsByTagName("Trackpoint");
         
@@ -128,9 +132,15 @@ document.addEventListener('DOMContentLoaded', function () {
             if (finalSpeed >= 16.5) flightSec += timeDiff;
         }
 
+        // Clean up display names and keep internal tracks if meaningful
+        let displayName = fileName.split('.')[0].replace(/_/g, ' ').replace(/-/g, ' ');
+        if (internalName && internalName.toLowerCase() !== "surfing" && internalName.toLowerCase() !== "gpx export") {
+            displayName = internalName;
+        }
+
         const data = {
-            displayName: fileName.split('.')[0].replace(/_/g, ' ').replace(/-/g, ' '),
-            dateStr: sessionDate.toLocaleDateString('en-CA', {month:'short', day:'numeric'}),
+            displayName: displayName,
+            dateStr: sessionDate.toLocaleDateString('en-CA', {month:'short', day:'numeric', year:'numeric'}),
             flightTime: Math.round(flightSec / 60),
             motorTime: Math.round(motorSec / 60),
             maxSpeed: Math.max(...calibratedSpeeds).toFixed(1),
@@ -247,7 +257,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const data = JSON.parse(localStorage.getItem(key));
             let opt = document.createElement('option');
             opt.value = key;
-            opt.textContent = `${data.dateStr} - ${data.displayName}`;
+            opt.textContent = `${data.dateStr.split(',')[0]} - ${data.displayName}`;
             savedSelect.appendChild(opt);
         });
     }
@@ -272,7 +282,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (getEl('dashboard')) getEl('dashboard').classList.remove('dashboard-hidden');
     }
 
-    // --- 7. CANVAS SHARE BADGE GENERATOR (INSTAGRAM 4:5 FORMAT) ---
+    // --- 7. CANVAS SHARE BADGE GENERATOR (HIGH CONTRAST EDITION) ---
     const shareBtn = getEl('shareBtn');
     if (shareBtn) {
         shareBtn.addEventListener('click', function() {
@@ -281,7 +291,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            // High-res native 4:5 Instagram sizing target
             const canvas = document.createElement('canvas');
             canvas.width = 1080;
             canvas.height = 1350;
@@ -291,22 +300,20 @@ document.addEventListener('DOMContentLoaded', function () {
             const waveCount = getEl('waveCount') ? getEl('waveCount').textContent : '0';
             const longestWave = getEl('longestWave') ? getEl('longestWave').textContent : '0 m';
 
-            // Gather values from optional gear bag text inputs
             const fdVal = getEl('gearFoilDrive') ? getEl('gearFoilDrive').value.trim() : '';
             const foilVal = getEl('gearFoil') ? getEl('gearFoil').value.trim() : '';
             const wingVal = getEl('gearWing') ? getEl('gearWing').value.trim() : '';
 
-            // AUTO-SAVE GEAR DATA: Persist user choices into the device cache instantly
             localStorage.setItem('swellpath_pref_foildrive', fdVal);
             localStorage.setItem('swellpath_pref_foil', foilVal);
             localStorage.setItem('swellpath_pref_wing', wingVal);
 
-            // Matte Charcoal Theme Base Foundation
-            ctx.fillStyle = '#0a0a0c'; 
+            // TWEAK: Soft Slate Charcoal background instead of harsh true-black for visual separation
+            ctx.fillStyle = '#16161a'; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Subtle Technical Coordinate Grid Background Overlay Lines
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.025)';
+            // Technical Grid Overlay
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
             ctx.lineWidth = 1;
             for (let x = 0; x < canvas.width; x += 50) {
                 ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 680); ctx.stroke();
@@ -315,7 +322,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
             }
 
-            // Boundary track computations for aspect calculations
             let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
             state.fullTrack.forEach(pt => {
                 if (pt[0] < minLat) minLat = pt[0]; if (pt[0] > maxLat) maxLat = pt[0];
@@ -333,24 +339,25 @@ document.addEventListener('DOMContentLoaded', function () {
             function scaleX(lon) { return xOffset + (lon - minLon) * scale; }
             function scaleY(lat) { return (yOffset + mapH) - (lat - minLat) * scale; }
 
-            // Draw primary GPS tracking line route path
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-            ctx.lineWidth = 3;
+            // TWEAK: Make raw track high-contrast bright silver-white line pathing
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+            ctx.lineWidth = 3.5;
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
             ctx.beginPath();
             state.fullTrack.forEach((pt, idx) => {
-                ctx.lineTo(scaleX(pt[1]), scaleY(pt[0]));
+                if (idx === 0) ctx.moveTo(scaleX(pt[1]), scaleY(pt[0]));
+                else ctx.lineTo(scaleX(pt[1]), scaleY(pt[0]));
             });
             ctx.stroke();
 
-            // Overlay Longest Ride with premium luminous glowing shadow lines
+            // Highlight Longest Wave Run with deep neon glow shadows
             if (state.longestTrack && state.longestTrack.length > 0) {
                 ctx.save();
                 ctx.strokeStyle = '#D4AF37'; 
-                ctx.lineWidth = 7;
-                ctx.shadowBlur = 15;
-                ctx.shadowColor = 'rgba(212, 175, 55, 0.6)';
+                ctx.lineWidth = 8;
+                ctx.shadowBlur = 18;
+                ctx.shadowColor = 'rgba(212, 175, 55, 0.8)';
                 ctx.beginPath();
                 state.longestTrack.forEach((pt, idx) => {
                     const x = scaleX(pt[1]); const y = scaleY(pt[0]);
@@ -360,46 +367,57 @@ document.addEventListener('DOMContentLoaded', function () {
                 ctx.restore();
             }
 
-            // Typography Layout Core Headers
+            // Text Layout Setup Headers
             ctx.textBaseline = 'top';
             ctx.font = 'bold 22px monospace';
-            ctx.fillStyle = '#666670';
+            ctx.fillStyle = '#888892';
             ctx.fillText('// SWELLPATH PRECISION LABS', 80, 60);
 
-            ctx.font = 'bold 42px sans-serif';
+            // Main Title String
+            ctx.font = 'bold 44px sans-serif';
             ctx.fillStyle = '#FFF';
-            ctx.fillText(`${data.displayName}`, 80, 95);
+            
+            // Check if title has a custom label or generic surfing string to separate subtitle line values
+            let displayTitle = data.displayName;
+            let displaySub = "";
+            if (displayTitle.toLowerCase().includes("afternoon surfing") || displayTitle.toLowerCase().includes("morning surfing")) {
+                displaySub = "Session Track";
+            } else {
+                displaySub = "Foil Location Archive";
+            }
+            
+            ctx.fillText(displayTitle, 80, 95);
             
             ctx.font = '24px monospace';
-            ctx.fillStyle = '#888892';
+            ctx.fillStyle = '#A0A0A0';
             ctx.textAlign = 'right';
             ctx.fillText(`${data.dateStr}`, canvas.width - 80, 108);
             ctx.textAlign = 'left'; 
 
-            // Middle Section Content Break Rule line
-            ctx.strokeStyle = '#1c1c24';
+            // Separation bar line rules
+            ctx.strokeStyle = '#2C2C2E';
             ctx.lineWidth = 2;
             ctx.beginPath(); ctx.moveTo(80, 680); ctx.lineTo(canvas.width - 80, 680); ctx.stroke();
 
-            // Highlight Performance Hero Stat Block (Longest Ride Spotlight)
+            // Performance Hero Section Details
             ctx.font = 'bold 20px monospace';
             ctx.fillStyle = '#D4AF37';
-            ctx.fillText('// HERO PERFORMANCE RIDE', 80, 720);
+            ctx.fillText(`// PERFORMANCE ANALYSIS — ${displaySub.toUpperCase()}`, 80, 720);
 
             ctx.font = 'bold 96px sans-serif';
             ctx.fillStyle = '#FFF';
             ctx.fillText(longestWave, 75, 755);
 
             ctx.font = '24px monospace';
-            ctx.fillStyle = '#888892';
+            ctx.fillStyle = '#A0A0A0';
             ctx.fillText('UNASSISTED GLIDE DISTANCE', 420, 810);
 
             ctx.beginPath(); ctx.moveTo(80, 890); ctx.lineTo(canvas.width - 80, 890); ctx.stroke();
 
-            // Performance Secondary Row Details Grid
+            // Secondary Parameter Metrics Items Layout Grid rows
             function drawSubMetric(label, value, xPos, yPos) {
                 ctx.font = '16px monospace';
-                ctx.fillStyle = '#666670';
+                ctx.fillStyle = '#888892';
                 ctx.fillText(label, xPos, yPos);
                 ctx.font = 'bold 38px sans-serif';
                 ctx.fillStyle = '#FFF';
@@ -413,10 +431,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             ctx.beginPath(); ctx.moveTo(80, 1040); ctx.lineTo(canvas.width - 80, 1040); ctx.stroke();
 
-            // Render Optional Equipment Bag Profile Stats if populated
+            // Gear Bag Specifications Display Configuration
             if (fdVal || foilVal || wingVal) {
                 ctx.font = 'bold 18px monospace';
-                ctx.fillStyle = '#666670';
+                ctx.fillStyle = '#888892';
                 ctx.fillText('// EQUIPMENT PROFILE', 80, 1080);
 
                 let currentX = 80;
@@ -436,23 +454,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             } else {
                 ctx.font = 'italic 22px sans-serif';
-                ctx.fillStyle = '#33333d';
+                ctx.fillStyle = '#555562';
                 ctx.fillText('Tracked with Swellpath Unassisted Wave Processing Engine.', 80, 1100);
             }
 
-            // Editorial Footer Stamps
-            ctx.strokeStyle = '#22222a';
+            // Branding Section Footnotes Stamps
+            ctx.strokeStyle = '#2C2C2E';
             ctx.beginPath(); ctx.moveTo(80, 1200); ctx.lineTo(canvas.width - 80, 1200); ctx.stroke();
 
             ctx.font = 'bold 16px monospace';
-            ctx.fillStyle = '#44444c';
+            ctx.fillStyle = '#666670';
             ctx.fillText('SWELLPATH.APP', 80, 1240);
             
             ctx.textAlign = 'right';
             ctx.fillText('PRECISION FOIL ANALYTICS', canvas.width - 80, 1240);
             ctx.textAlign = 'left';
 
-            // Push final raw base64 data stream to preview frame image container node
             const imgUrl = canvas.toDataURL('image/png');
             const container = getEl('imageContainer');
             if (container) {
