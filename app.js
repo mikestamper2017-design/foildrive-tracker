@@ -65,10 +65,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const dropZone = getEl('dropZone');
     const fileInput = getEl('fileInput');
-    if (dropZone && fileInput) {
-        dropZone.addEventListener('click', () => fileInput.click());
+    if (fileInput) {
         fileInput.addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
                 const file = e.target.files[0];
