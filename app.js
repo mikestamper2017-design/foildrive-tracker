@@ -109,60 +109,70 @@ document.addEventListener('DOMContentLoaded', function () {
         reader.readAsText(file);
     }
 
-    // --- 3. GPX PARSING & CALIBRATED PHYSICS (ALL-WEATHER XML ENGINE) ---
-        // Generate baseline values if track contains single node entries
-        if (rawSpeeds.length === 0) rawSpeeds.push(0);
+   // --- 3. GPX PARSING & CALIBRATED PHYSICS (ALL-WEATHER XML ENGINE) ---
+    function parseGPX(xmlString, fileName) {
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(xmlString, "text/xml");
+        
+        if (xmlDoc.getElementsByTagName("parsererror").length > 0) {
+            throw new Error("Invalid XML structure.");
+        }
+
+        let lats = [], lons = [], times = [], rawSpeeds = [], calibratedSpeeds = [];
+        
+        // Use a universal node selector for GPX/TCX formats
+        const trackpoints = xmlDoc.querySelectorAll('trkpt, Trackpoint, wpt');
+        
+        trackpoints.forEach(node => {
+            let lat = node.getAttribute('lat') || node.querySelector('LatitudeDegrees')?.textContent || node.querySelector('lat')?.textContent;
+            let lon = node.getAttribute('lon') || node.querySelector('LongitudeDegrees')?.textContent || node.querySelector('lon')?.textContent;
+            let timeNode = node.querySelector('time') || node.querySelector('Time');
+            
+            if (lat && lon) {
+                lats.push(parseFloat(lat));
+                lons.push(parseFloat(lon));
+                times.push(timeNode ? new Date(timeNode.textContent).getTime() : 0);
+            }
+        });
+
+        if (lats.length < 2) {
+            throw new Error("Insufficient data points.");
+        }
+
+        // --- Physics Engine ---
+        for (let i = 1; i < lats.length; i++) {
+            let dist = calculateDistance(lats[i-1], lons[i-1], lats[i], lons[i]);
+            let timeDiff = (times[i] - times[i-1]) / 1000;
+            let speed = (timeDiff > 0) ? (dist / timeDiff) * 3.6 : 0;
+            rawSpeeds.push(speed > 65 ? 0 : speed);
+        }
 
         let motorSec = 0, flightSec = 0;
-        
-        // Restore index targeting to step cleanly alongside rawSpeeds arrays
-        for (let i = 0; i < rawSpeeds.length; i++) {
+        rawSpeeds.forEach((s, i) => {
+            // Apply 5-point median filter
             let window = rawSpeeds.slice(Math.max(0, i-2), i+3);
             window.sort((a, b) => a - b);
-            let median = window[Math.floor(window.length / 2)] || 0;
-            let finalSpeed = median * 0.92; // Calibration scalar applied
+            let finalSpeed = (window[Math.floor(window.length / 2)] || 0) * 0.92;
             calibratedSpeeds.push(finalSpeed);
 
-            // RESTORED CONCEPT: Calculate looking backward to eliminate lookahead undefined drops
-            let timeDiff = 1;
-            if (times[i+1] !== undefined && times[i] !== undefined) {
-                timeDiff = (times[i+1] - times[i]) / 1000;
-            }
-            if (isNaN(timeDiff) || timeDiff <= 0) timeDiff = 1; // Safeguard clock steps
-            
-            if (finalSpeed > 2.0) motorSec += timeDiff;
-            if (finalSpeed >= 16.5) flightSec += timeDiff;
-        }
-            // FIXED: Safeguard array length check against the final index element lookahead step
-            let timeDiff = 1;
-            if (i < times.length - 1) {
-                timeDiff = (times[i+1] - times[i]) / 1000;
-            }
-            if (isNaN(timeDiff) || timeDiff <= 0) timeDiff = 1; 
-            
-            if (finalSpeed > 2.0) motorSec += timeDiff;
-            if (finalSpeed >= 16.5) flightSec += timeDiff;
-        }
-
-        let displayName = fileName.split('.')[0].replace(/_/g, ' ').replace(/-/g, ' ');
-        if (internalName && internalName.toLowerCase() !== "surfing" && internalName.toLowerCase() !== "gpx export") {
-            displayName = internalName;
-        }
+            let t = (times[i+1] - times[i]) / 1000 || 1;
+            if (finalSpeed > 2.0) motorSec += t;
+            if (finalSpeed >= 16.5) flightSec += t;
+        });
 
         const data = {
-            displayName: displayName,
-            dateStr: sessionDate.toLocaleDateString('en-CA', {month:'short', day:'numeric', year:'numeric'}),
+            displayName: fileName.replace('.gpx', ''),
+            dateStr: new Date(times[0]).toLocaleDateString('en-CA'),
             flightTime: Math.round(flightSec / 60),
             motorTime: Math.round(motorSec / 60),
-            maxSpeed: Math.max(...calibratedSpeeds).toFixed(1),
+            maxSpeed: Math.max(0, ...calibratedSpeeds).toFixed(1),
             lats, lons, speeds: calibratedSpeeds, times
         };
 
-        let key = `Swellpath_${sessionDate.getTime()}`;
+        const key = `Swellpath_${times[0] || Date.now()}`;
         localStorage.setItem(key, JSON.stringify(data));
         return key;
     }
-
     // --- 4. TRACK & WAVE ANALYTICS ---
     function calculateTracks(data) {
         state.fullTrack = data.lats.map((v, i) => [data.lats[i], data.lons[i]]);
