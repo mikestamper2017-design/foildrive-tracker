@@ -90,8 +90,15 @@ document.addEventListener('DOMContentLoaded', function () {
             calibratedSpeeds.push(finalSpeed);
 
             let timeDiff = (times[i+1] - times[i]) / 1000;
-            if (finalSpeed > 0.5 && finalSpeed < 18.5) motorSec += timeDiff;
-            else if (finalSpeed >= 18.5) flightSec += timeDiff;
+            
+            // Motor time tracks total cumulative runtime under battery load (> 2.0 km/h)
+            if (finalSpeed > 2.0) {
+                motorSec += timeDiff;
+            }
+            // Flight time gate set to 15.0 km/h to properly grab low-amplitude or small-day foiling
+            if (finalSpeed >= 15.0) {
+                flightSec += timeDiff;
+            }
         }
 
         const data = {
@@ -133,16 +140,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (!isOutbound) state.filteredTrack.push(curr);
 
-            // Tuned Logic: Schmitt Trigger / Hysteresis speed thresholds
+            // Schmitt Trigger Hysteresis
             let speedCondition = false;
             if (!isCurrentlyOnWave) {
-                // Trigger wave start at 15.5 km/h
                 if (data.speeds[i] >= 15.5) {
                     speedCondition = true;
                     isCurrentlyOnWave = true;
                 }
             } else {
-                // Keep wave alive until speed drops under 12.0 km/h
                 if (data.speeds[i] >= 12.0) {
                     speedCondition = true;
                 } else {
@@ -150,13 +155,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }
 
-            // Tuned Logic: Expanded directional safety corridor for carving
+            // Expanded directional corridor for carving return lines back down-wind/down-swell
             let directionCondition = (angle > -170 && angle < -10);
 
             if (!isOutbound && speedCondition && directionCondition) {
                 currentRun.push({coord: curr, speed: data.speeds[i]});
             } else {
-                // Tuned Logic: Lower duration hurdle down to 4 points (~4 seconds)
                 if (currentRun.length >= 4) {
                     allRuns.push([...currentRun]); 
                 }
@@ -164,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 isCurrentlyOnWave = false;
             }
         }
-        // Catch trailing open run if it exists
+        
         if (currentRun.length >= 4) {
             allRuns.push([...currentRun]);
         }
