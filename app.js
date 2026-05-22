@@ -308,7 +308,7 @@ document.addEventListener('DOMContentLoaded', function () {
             localStorage.setItem('swellpath_pref_foil', foilVal);
             localStorage.setItem('swellpath_pref_wing', wingVal);
 
-            // TWEAK: Soft Slate Charcoal background instead of harsh true-black for visual separation
+            // Soft Slate Charcoal background instead of harsh true-black for visual separation
             ctx.fillStyle = '#16161a'; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -339,7 +339,7 @@ document.addEventListener('DOMContentLoaded', function () {
             function scaleX(lon) { return xOffset + (lon - minLon) * scale; }
             function scaleY(lat) { return (yOffset + mapH) - (lat - minLat) * scale; }
 
-            // TWEAK: Make raw track high-contrast bright silver-white line pathing
+            // Make raw track high-contrast bright silver-white line pathing
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
             ctx.lineWidth = 3.5;
             ctx.lineCap = 'round';
