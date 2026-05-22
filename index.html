@@ -67,13 +67,79 @@
             font-size: 13px;
         }
 
-        /* Styling for the new Lock Heading Button to match your existing buttons */
+        /* Styling for the Lock Heading Button to match your existing buttons */
         #lockHeadingBtn {
             background: transparent;
             border: 1px solid var(--border-color);
             color: var(--text-primary);
             margin-bottom: 8px;
             font-size: 12px;
+        }
+
+        /* Modal Overlay Background Blur and Alignment */
+        .share-modal-overlay {
+            display: none; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(6, 6, 8, 0.88); 
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            z-index: 10000; 
+            justify-content: center; 
+            align-items: center; 
+            flex-direction: column; 
+        }
+
+        .share-modal-card {
+            background: #0d0d11; 
+            padding: 24px; 
+            border-radius: 12px; 
+            border: 1px solid #222227; 
+            max-width: 90%; 
+            width: 640px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        }
+
+        .share-modal-card h3 {
+            color: #FFF; 
+            margin-top: 0;
+            font-size: 18px;
+            letter-spacing: -0.5px;
+        }
+
+        .share-modal-card p {
+            color: #888892; 
+            font-size: 13px; 
+            margin-bottom: 20px;
+        }
+
+        #imageContainer img {
+            max-width: 100%; 
+            height: auto; 
+            border: 1px solid #222227; 
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        #closeShareBtn {
+            background: transparent; 
+            border: 1px solid #33333d; 
+            color: #A0A0A0; 
+            padding: 10px 20px; 
+            border-radius: 6px; 
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        #closeShareBtn:hover {
+            border-color: #555562;
+            color: #FFF;
         }
 
         @media (max-width: 768px) {
@@ -170,12 +236,21 @@
 
             <div class="button-stack" style="display: flex; flex-direction: column; gap: 8px;">
                 <button id="lockHeadingBtn" class="action-btn">Lock Outbound Heading</button>
-                <button id="shareBtn" class="action-btn">Copy Session to Clipboard</button>
+                <button id="shareBtn" class="action-btn">Generate Session Badge</button>
             </div>
         </div>
 
         <div id="mapContainer" class="map-container"></div>
     </main>
+
+    <div id="shareModal" class="share-modal-overlay">
+        <div class="share-modal-card">
+            <h3>Your Session Badge</h3>
+            <p>Long-press or right-click the image below to save or share it directly.</p>
+            <div id="imageContainer" style="margin-bottom: 20px;"></div>
+            <button id="closeShareBtn">Close</button>
+        </div>
+    </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="app.js"></script>
