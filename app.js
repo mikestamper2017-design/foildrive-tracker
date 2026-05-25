@@ -249,6 +249,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const totalDurationMin = Math.round(durationMs / 60000);
             const sessionDate = new Date(data.times[0]).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
             const startTime = new Date(data.times[0]).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            // Manual Location logic
+            const locationInput = getEl('locationInput');
+            const locationText = locationInput ? locationInput.value : "";
 
             ctx.fillStyle = '#001f3f'; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -273,7 +277,7 @@ document.addEventListener('DOMContentLoaded', function () {
             ctx.font = 'bold 56px sans-serif'; ctx.fillStyle = '#FFF';
             ctx.fillText(`${data.displayName}`, 80, 80);
             ctx.font = '36px sans-serif'; ctx.fillStyle = '#7FDBFF';
-            ctx.fillText(`Uxbridge, ON • ${sessionDate} • ${startTime} • 26°C`, 80, 150);
+            ctx.fillText(`${locationText ? locationText + ' • ' : ''}${sessionDate} • ${startTime}`, 80, 150);
 
             function drawSubMetric(icon, label, value, xPos, yPos) {
                 ctx.font = '80px sans-serif'; ctx.fillText(icon, xPos, yPos + 55);
@@ -284,8 +288,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
 
             drawSubMetric('⚡', 'MAX SPEED', `${data.maxSpeed} km/h`, 80, 800);
-            drawSubMetric('⏱️', 'SESSION TIME', `${totalDurationMin} min`, 580, 800);
-            drawSubMetric('🌊', 'RIDE COUNT', `${getEl('waveCount').textContent}`, 80, 1000);
+            drawSubMetric('🌊', 'LONGEST RIDE', `${getEl('longestWave').textContent}`, 580, 800);
+            drawSubMetric('⏱️', 'SESSION TIME', `${totalDurationMin} min`, 80, 1000);
             drawSubMetric('🦅', 'FLIGHT TIME', `${data.flightTime} min`, 580, 1000);
 
             const imgUrl = canvas.toDataURL('image/png');
