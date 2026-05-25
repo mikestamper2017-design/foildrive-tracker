@@ -15,15 +15,10 @@ document.addEventListener('DOMContentLoaded', function () {
     populateSavedSessions();
 
     function getEl(id) { return document.getElementById(id); }
-    if (getEl('gearFoilDrive')) getEl('gearFoilDrive').value = localStorage.getItem('swellpath_pref_foildrive') || '';
-    if (getEl('gearFoil')) getEl('gearFoil').value = localStorage.getItem('swellpath_pref_foil') || '';
-    if (getEl('gearWing')) getEl('gearWing').value = localStorage.getItem('swellpath_pref_wing') || '';
 
     // --- 2. USER INTERACTION INTERFACES ---
     const toggleWaveOnly = getEl('toggleWaveOnly');
-    if (toggleWaveOnly) {
-        toggleWaveOnly.addEventListener('change', () => { if (state.currentData) renderMap(); });
-    }
+    if (toggleWaveOnly) toggleWaveOnly.addEventListener('change', () => { if (state.currentData) renderMap(); });
 
     const lockHeadingBtn = getEl('lockHeadingBtn');
     if (lockHeadingBtn) {
@@ -48,35 +43,24 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    const loadSessionBtn = getEl('loadSessionBtn');
-    if (loadSessionBtn) {
-        loadSessionBtn.addEventListener('click', () => {
-            const savedSessions = getEl('savedSessions');
-            if (savedSessions && savedSessions.value) loadSession(savedSessions.value);
-        });
-    }
-
     const dropZone = getEl('dropZone');
     const fileInput = getEl('fileInput');
     if (dropZone && fileInput) {
         dropZone.addEventListener('click', () => fileInput.click());
         fileInput.addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
-                const file = e.target.files[0];
                 const reader = new FileReader();
                 reader.onload = (ev) => {
-                    const key = parseGPX(ev.target.result, file.name);
+                    const key = parseGPX(ev.target.result, e.target.files[0].name);
                     populateSavedSessions();
-                    const savedSessions = getEl('savedSessions');
-                    if (savedSessions) savedSessions.value = key;
                     loadSession(key);
                 };
-                reader.readAsText(file);
+                reader.readAsText(e.target.files[0]);
             }
         });
     }
 
-    // --- 3. GPX PARSING & CALIBRATED PHYSICS ---
+    // --- 3. GPX PARSING ---
     function parseGPX(xmlString, fileName) {
         const parser = new DOMParser();
         const xmlDoc = parser.parseFromString(xmlString, "text/xml");
@@ -84,16 +68,13 @@ document.addEventListener('DOMContentLoaded', function () {
         
         let tNodes = xmlDoc.getElementsByTagName("time");
         let sessionDate = tNodes.length > 0 ? new Date(tNodes[0].textContent) : new Date();
-
-        let nodes = xmlDoc.getElementsByTagName("trkpt").length > 0 ? 
-                    xmlDoc.getElementsByTagName("trkpt") : xmlDoc.getElementsByTagName("Trackpoint");
+        let nodes = xmlDoc.getElementsByTagName("trkpt").length > 0 ? xmlDoc.getElementsByTagName("trkpt") : xmlDoc.getElementsByTagName("Trackpoint");
         
         for (let i = 0; i < nodes.length; i++) {
-            let lat = nodes[i].getAttribute("lat") || (nodes[i].getElementsByTagName("LatitudeDegrees")[0]?.textContent);
-            let lon = nodes[i].getAttribute("lon") || (nodes[i].getElementsByTagName("LongitudeDegrees")[0]?.textContent);
+            let lat = nodes[i].getAttribute("lat") || nodes[i].getElementsByTagName("LatitudeDegrees")[0]?.textContent;
+            let lon = nodes[i].getAttribute("lon") || nodes[i].getElementsByTagName("LongitudeDegrees")[0]?.textContent;
             if (lat && lon) {
-                lats.push(parseFloat(lat));
-                lons.push(parseFloat(lon));
+                lats.push(parseFloat(lat)); lons.push(parseFloat(lon));
                 let t = nodes[i].getElementsByTagName("time")[0] || nodes[i].getElementsByTagName("Time")[0];
                 times.push(t ? new Date(t.textContent).getTime() : 0);
             }
@@ -109,18 +90,16 @@ document.addEventListener('DOMContentLoaded', function () {
         let motorSec = 0, flightSec = 0;
         for (let i = 0; i < rawSpeeds.length; i++) {
             let window = rawSpeeds.slice(Math.max(0, i-2), i+3);
-            window.sort((a, b) => a - b);
-            let median = window[Math.floor(window.length / 2)] || 0;
+            let median = window.sort((a, b) => a - b)[Math.floor(window.length / 2)] || 0;
             let finalSpeed = median * 0.92;
             calibratedSpeeds.push(finalSpeed);
-
             let timeDiff = (times[i+1] - times[i]) / 1000;
             if (finalSpeed > 2.0) motorSec += timeDiff;
             if (finalSpeed >= 16.5) flightSec += timeDiff;
         }
 
         const data = {
-            displayName: fileName.split('.')[0].replace(/_/g, ' ').replace(/-/g, ' '),
+            displayName: fileName.split('.')[0].replace(/_/g, ' '),
             dateStr: sessionDate.toLocaleDateString('en-CA', {month:'short', day:'numeric'}),
             flightTime: Math.round(flightSec / 60),
             motorTime: Math.round(motorSec / 60),
@@ -136,57 +115,39 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- 4. TRACK & WAVE ANALYTICS ---
     function calculateTracks(data) {
         state.fullTrack = data.lats.map((v, i) => [data.lats[i], data.lons[i]]);
-        state.filteredTrack = [];
-        state.waveTracks = [];
-        state.longestTrack = [];
-        state.fastestTrack = []; 
-        let currentRun = [], allRuns = [], totalD = 0;
-        let isCurrentlyOnWave = false;
+        state.waveTracks = []; state.longestTrack = [];
+        let currentRun = [], allRuns = [], totalD = 0, isCurrentlyOnWave = false;
 
         for (let i = 1; i < state.fullTrack.length; i++) {
             let prev = state.fullTrack[i-1], curr = state.fullTrack[i];
             totalD += calculateDistance(prev[0], prev[1], curr[0], curr[1]);
-            let brng = calculateBearing(prev[0], prev[1], curr[0], curr[1]);
             let dLon = curr[1] - prev[1], dLat = curr[0] - prev[0];
             let angle = Math.atan2(dLat, dLon) * (180 / Math.PI);
             
-            let isOutbound = false;
-            if (state.lockedHeading !== null) {
-                let diff = Math.abs(brng - state.lockedHeading);
-                if ((diff > 180 ? 360 - diff : diff) < 50) isOutbound = true; 
-            }
-            if (!isOutbound) state.filteredTrack.push(curr);
+            let speedCondition = (!isCurrentlyOnWave) ? data.speeds[i] >= 16.5 : data.speeds[i] >= 13.0;
+            if (data.speeds[i] >= 16.5) isCurrentlyOnWave = true;
+            else if (data.speeds[i] < 13.0) isCurrentlyOnWave = false;
 
-            let speedCondition = false;
-            if (!isCurrentlyOnWave) {
-                if (data.speeds[i] >= 16.5) { speedCondition = true; isCurrentlyOnWave = true; }
-            } else {
-                if (data.speeds[i] >= 13.0) speedCondition = true;
-                else isCurrentlyOnWave = false;
-            }
-            let directionCondition = (angle > -170 && angle < -10);
-            if (!isOutbound && speedCondition && directionCondition) {
+            if (speedCondition && (angle > -170 && angle < -10)) {
                 currentRun.push({coord: curr, speed: data.speeds[i]});
             } else {
                 if (currentRun.length >= 6) allRuns.push([...currentRun]); 
-                currentRun = []; isCurrentlyOnWave = false;
+                currentRun = [];
             }
         }
         if (currentRun.length >= 6) allRuns.push([...currentRun]);
 
-        let longestM = 0, maxWaveAvg = 0;
+        let longestM = 0;
         allRuns.forEach(run => {
             let coordsOnly = run.map(p => p.coord);
             let rd = 0;
             for (let j=1; j<coordsOnly.length; j++) rd += calculateDistance(coordsOnly[j-1][0], coordsOnly[j-1][1], coordsOnly[j][0], coordsOnly[j][1]);
             if (rd > longestM) { longestM = rd; state.longestTrack = coordsOnly; }
-            let avgSpeed = run.reduce((sum, p) => sum + p.speed, 0) / run.length;
-            if (avgSpeed > maxWaveAvg) { maxWaveAvg = avgSpeed; state.fastestTrack = coordsOnly; }
         });
         state.waveTracks = allRuns.map(run => run.map(p => p.coord)).flat();
+        
         if (getEl('waveCount')) getEl('waveCount').textContent = allRuns.length;
         if (getEl('longestWave')) getEl('longestWave').textContent = `${Math.round(longestM)} m`;
-        if (getEl('fastestWave')) getEl('fastestWave').textContent = maxWaveAvg > 0 ? `${maxWaveAvg.toFixed(1)} km/h` : "0.0 km/h";
         if (getEl('totalDistance')) getEl('totalDistance').textContent = `${(totalD / 1000).toFixed(2)} km`;
     }
 
@@ -196,14 +157,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (state.map) { state.map.remove(); state.map = null; }
         state.map = L.map('mapContainer').setView(state.fullTrack[0], 14);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
-        const showWavesOnly = toggleWaveOnly ? toggleWaveOnly.checked : false;
-        const bgTrack = (state.lockedHeading !== null) ? state.filteredTrack : state.fullTrack;
-        if (!showWavesOnly) L.polyline(bgTrack, {color: '#A0A0A0', weight: 2, opacity: 0.4}).addTo(state.map);
-        if (state.waveTracks.length > 0) L.polyline(state.waveTracks, {color: '#000', weight: 3}).addTo(state.map);
-        if (state.longestTrack.length > 0) L.polyline(state.longestTrack, {color: '#D4AF37', weight: 6, opacity: 0.9}).addTo(state.map);
-        if (state.fastestTrack.length > 0) L.polyline(state.fastestTrack, {color: '#00BCD4', weight: 4, dashArray: '5, 10'}).addTo(state.map);
-        const bounds = (showWavesOnly && state.waveTracks.length > 0) ? state.waveTracks : state.fullTrack;
-        state.map.fitBounds(L.latLngBounds(bounds));
+        L.polyline(state.fullTrack, {color: '#A0A0A0', weight: 2, opacity: 0.4}).addTo(state.map);
+        if (state.longestTrack.length > 0) L.polyline(state.longestTrack, {color: '#D4AF37', weight: 6}).addTo(state.map);
+        state.map.fitBounds(L.latLngBounds(state.fullTrack));
     }
 
     // --- 6. UI MANAGEMENT ---
@@ -211,8 +167,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const savedSelect = getEl('savedSessions');
         if (!savedSelect) return;
         savedSelect.innerHTML = '<option value="">-- Saved Sessions --</option>';
-        let keys = Object.keys(localStorage).filter(k => k.startsWith('Swellpath_')).sort((a,b) => b.split('_')[1] - a.split('_')[1]);
-        keys.forEach(key => {
+        Object.keys(localStorage).filter(k => k.startsWith('Swellpath_')).sort((a,b) => b.split('_')[1] - a.split('_')[1]).forEach(key => {
             const data = JSON.parse(localStorage.getItem(key));
             let opt = document.createElement('option');
             opt.value = key;
@@ -225,7 +180,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const data = JSON.parse(localStorage.getItem(key));
         if (!data) return;
         state.currentData = data;
-        state.lockedHeading = null;
         if (getEl('flightTime')) getEl('flightTime').textContent = `${data.flightTime} min`;
         if (getEl('motorTime')) getEl('motorTime').textContent = `${data.motorTime} min`;
         if (getEl('maxSpeed')) getEl('maxSpeed').textContent = `${data.maxSpeed} km/h`;
@@ -238,63 +192,55 @@ document.addEventListener('DOMContentLoaded', function () {
     const shareBtn = getEl('shareBtn');
     if (shareBtn) {
         shareBtn.addEventListener('click', function() {
-            if (!state.currentData || !state.fullTrack.length) return;
-
+            if (!state.currentData) return;
             const canvas = document.createElement('canvas');
             canvas.width = 1080; canvas.height = 1350;
             const ctx = canvas.getContext('2d');
             const data = state.currentData;
             
-            const durationMs = data.times[data.times.length - 1] - data.times[0];
-            const totalDurationMin = Math.round(durationMs / 60000);
-            const sessionDate = new Date(data.times[0]).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
-            const startTime = new Date(data.times[0]).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            
-            // Manual Location logic
-            const locationInput = getEl('locationInput');
-            const locationText = locationInput ? locationInput.value : "";
+            const totalDurationMin = Math.round((data.times[data.times.length - 1] - data.times[0]) / 60000);
+            const locationText = getEl('locationInput') ? getEl('locationInput').value : "";
 
-            ctx.fillStyle = '#001f3f'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#001f3f'; ctx.fillRect(0, 0, 1080, 1350);
 
+            // Mapping
             let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
             state.fullTrack.forEach(pt => {
                 if (pt[0] < minLat) minLat = pt[0]; if (pt[0] > maxLat) maxLat = pt[0];
                 if (pt[1] < minLon) minLon = pt[1]; if (pt[1] > maxLon) maxLon = pt[1];
             });
-            const latRange = maxLat - minLat || 0.001, lonRange = maxLon - minLon || 0.001;
-            const mapX = 80, mapY = 220, mapW = 920, mapH = 450;
-            const scale = Math.min(mapW / lonRange, mapH / latRange);
-            const xOffset = mapX + (mapW - lonRange * scale) / 2, yOffset = mapY + (mapH - latRange * scale) / 2;
+            const scale = Math.min(920 / (maxLon - minLon || 0.001), 400 / (maxLat - minLat || 0.001));
+            const xOffset = 80 + (920 - (maxLon - minLon) * scale) / 2;
+            const yOffset = 220 + (400 - (maxLat - minLat) * scale) / 2;
+            function sX(lon) { return xOffset + (lon - minLon) * scale; }
+            function sY(lat) { return (yOffset + 400) - (lat - minLat) * scale; }
 
-            function scaleX(lon) { return xOffset + (lon - minLon) * scale; }
-            function scaleY(lat) { return (yOffset + mapH) - (lat - minLat) * scale; }
-
-            ctx.strokeStyle = '#7FDBFF'; ctx.lineWidth = 6;
-            ctx.beginPath();
-            state.fullTrack.forEach(pt => ctx.lineTo(scaleX(pt[1]), scaleY(pt[0])));
-            ctx.stroke();
-
-            ctx.font = 'bold 56px sans-serif'; ctx.fillStyle = '#FFF';
-            ctx.fillText(`${data.displayName}`, 80, 80);
-            ctx.font = '36px sans-serif'; ctx.fillStyle = '#7FDBFF';
-            ctx.fillText(`${locationText ? locationText + ' • ' : ''}${sessionDate} • ${startTime}`, 80, 150);
-
-            function drawSubMetric(icon, label, value, xPos, yPos) {
-                ctx.font = '80px sans-serif'; ctx.fillText(icon, xPos, yPos + 55);
-                ctx.font = 'bold 32px sans-serif'; ctx.fillStyle = '#AAAAAA';
-                ctx.fillText(label, xPos + 100, yPos + 15);
-                ctx.font = 'bold 64px sans-serif'; ctx.fillStyle = '#FFF';
-                ctx.fillText(value, xPos + 100, yPos + 75);
+            // Paths
+            ctx.strokeStyle = '#7FDBFF'; ctx.lineWidth = 4;
+            ctx.beginPath(); state.fullTrack.forEach(pt => ctx.lineTo(sX(pt[1]), sY(pt[0]))); ctx.stroke();
+            if (state.longestTrack.length > 0) {
+                ctx.strokeStyle = '#D4AF37'; ctx.lineWidth = 8;
+                ctx.beginPath(); state.longestTrack.forEach((pt, i) => i === 0 ? ctx.moveTo(sX(pt[1]), sY(pt[0])) : ctx.lineTo(sX(pt[1]), sY(pt[0]))); ctx.stroke();
             }
 
-            drawSubMetric('⚡', 'MAX SPEED', `${data.maxSpeed} km/h`, 80, 800);
-            drawSubMetric('🌊', 'LONGEST RIDE', `${getEl('longestWave').textContent}`, 580, 800);
-            drawSubMetric('⏱️', 'SESSION TIME', `${totalDurationMin} min`, 80, 1000);
-            drawSubMetric('🦅', 'FLIGHT TIME', `${data.flightTime} min`, 580, 1000);
+            // Text
+            ctx.fillStyle = '#FFF'; ctx.font = 'bold 56px sans-serif'; ctx.fillText(data.displayName, 80, 80);
+            ctx.fillStyle = '#7FDBFF'; ctx.font = '36px sans-serif'; ctx.fillText(`${locationText} • ${data.dateStr}`, 80, 150);
+
+            function drawM(i, l, v, x, y) {
+                ctx.fillStyle = '#FFF'; ctx.font = '60px sans-serif'; ctx.fillText(i, x, y + 50);
+                ctx.fillStyle = '#AAA'; ctx.font = 'bold 24px sans-serif'; ctx.fillText(l, x + 80, y);
+                ctx.fillStyle = '#FFF'; ctx.font = 'bold 48px sans-serif'; ctx.fillText(v, x + 80, y + 60);
+            }
+            drawM('🦅', 'HERO RIDE', getEl('longestWave').textContent, 80, 700);
+            drawM('⚡', 'MAX SPEED', `${data.maxSpeed} km/h`, 580, 700);
+            drawM('⏱️', 'SESSION', `${totalDurationMin} min`, 80, 900);
+            drawM('🌊', 'WAVES', getEl('waveCount').textContent, 580, 900);
+            drawM('✈️', 'FLIGHT', `${data.flightTime} min`, 80, 1100);
+            drawM('🔋', 'MOTOR', `${data.motorTime} min`, 580, 1100);
 
             const imgUrl = canvas.toDataURL('image/png');
-            const container = getEl('imageContainer');
-            if (container) container.innerHTML = `<img src="${imgUrl}" style="width:100%; border-radius:8px;"/>`;
+            if (getEl('imageContainer')) getEl('imageContainer').innerHTML = `<img src="${imgUrl}" style="width:100%; border-radius:8px;"/>`;
             if (getEl('shareModal')) getEl('shareModal').style.display = 'flex';
         });
     }
