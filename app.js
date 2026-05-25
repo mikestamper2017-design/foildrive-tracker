@@ -12,10 +12,8 @@ document.addEventListener('DOMContentLoaded', function () {
         lockedHeading: null
     };
 
-    // Initialize drop list views
     populateSavedSessions();
 
-    // PERSISTENCE RESTORE: Pull previous gear profiles out of localStorage caching
     function getEl(id) { return document.getElementById(id); }
     if (getEl('gearFoilDrive')) getEl('gearFoilDrive').value = localStorage.getItem('swellpath_pref_foildrive') || '';
     if (getEl('gearFoil')) getEl('gearFoil').value = localStorage.getItem('swellpath_pref_foil') || '';
@@ -241,7 +239,7 @@ document.addEventListener('DOMContentLoaded', function () {
         
         savedSelect.innerHTML = '<option value="">-- Saved Sessions --</option>';
         let keys = Object.keys(localStorage).filter(k => k.startsWith('Swellpath_'))
-                    .sort((a,b) => b.split('_')[1] - a.split('_')[1]);
+                        .sort((a,b) => b.split('_')[1] - a.split('_')[1]);
 
         keys.forEach(key => {
             const data = JSON.parse(localStorage.getItem(key));
@@ -281,7 +279,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 return;
             }
 
-            // High-res native 4:5 Instagram sizing target
             const canvas = document.createElement('canvas');
             canvas.width = 1080;
             canvas.height = 1350;
@@ -291,22 +288,27 @@ document.addEventListener('DOMContentLoaded', function () {
             const waveCount = getEl('waveCount') ? getEl('waveCount').textContent : '0';
             const longestWave = getEl('longestWave') ? getEl('longestWave').textContent : '0 m';
 
-            // Gather values from optional gear bag text inputs
+            // New Data Calculations
+            const durationMs = data.times[data.times.length - 1] - data.times[0];
+            const totalDurationMin = Math.round(durationMs / 60000);
+            const sessionDate = new Date(data.times[0]).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
+            const startTime = new Date(data.times[0]).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const location = "Uxbridge, ON"; 
+
             const fdVal = getEl('gearFoilDrive') ? getEl('gearFoilDrive').value.trim() : '';
             const foilVal = getEl('gearFoil') ? getEl('gearFoil').value.trim() : '';
             const wingVal = getEl('gearWing') ? getEl('gearWing').value.trim() : '';
 
-            // AUTO-SAVE GEAR DATA: Persist user choices into the device cache instantly
             localStorage.setItem('swellpath_pref_foildrive', fdVal);
             localStorage.setItem('swellpath_pref_foil', foilVal);
             localStorage.setItem('swellpath_pref_wing', wingVal);
 
-            // Matte Charcoal Theme Base Foundation
-            ctx.fillStyle = '#0a0a0c'; 
+            // Deep Navy Theme Base
+            ctx.fillStyle = '#001f3f'; 
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Subtle Technical Coordinate Grid Background Overlay Lines
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.025)';
+            // Coordinate Grid
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
             ctx.lineWidth = 1;
             for (let x = 0; x < canvas.width; x += 50) {
                 ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 680); ctx.stroke();
@@ -315,7 +317,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
             }
 
-            // Boundary track computations for aspect calculations
             let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
             state.fullTrack.forEach(pt => {
                 if (pt[0] < minLat) minLat = pt[0]; if (pt[0] > maxLat) maxLat = pt[0];
@@ -333,18 +334,13 @@ document.addEventListener('DOMContentLoaded', function () {
             function scaleX(lon) { return xOffset + (lon - minLon) * scale; }
             function scaleY(lat) { return (yOffset + mapH) - (lat - minLat) * scale; }
 
-            // Draw primary GPS tracking line route path
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
             ctx.lineWidth = 3;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
             ctx.beginPath();
-            state.fullTrack.forEach((pt, idx) => {
-                ctx.lineTo(scaleX(pt[1]), scaleY(pt[0]));
-            });
+            state.fullTrack.forEach((pt, idx) => { ctx.lineTo(scaleX(pt[1]), scaleY(pt[0])); });
             ctx.stroke();
 
-            // Overlay Longest Ride with premium luminous glowing shadow lines
+            // Longest Ride
             if (state.longestTrack && state.longestTrack.length > 0) {
                 ctx.save();
                 ctx.strokeStyle = '#D4AF37'; 
@@ -360,7 +356,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 ctx.restore();
             }
 
-            // Typography Layout Core Headers
+            // Headers & New Meta
             ctx.textBaseline = 'top';
             ctx.font = 'bold 22px monospace';
             ctx.fillStyle = '#666670';
@@ -370,33 +366,27 @@ document.addEventListener('DOMContentLoaded', function () {
             ctx.fillStyle = '#FFF';
             ctx.fillText(`${data.displayName}`, 80, 95);
             
-            ctx.font = '24px monospace';
-            ctx.fillStyle = '#888892';
-            ctx.textAlign = 'right';
-            ctx.fillText(`${data.dateStr}`, canvas.width - 80, 108);
-            ctx.textAlign = 'left'; 
+            ctx.font = '22px monospace';
+            ctx.fillStyle = '#7FDBFF';
+            ctx.fillText(`${location}  •  ${sessionDate}  •  ${startTime}  •  26°C`, 80, 150);
 
-            // Middle Section Content Break Rule line
-            ctx.strokeStyle = '#1c1c24';
+            ctx.strokeStyle = '#003366';
             ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.moveTo(80, 680); ctx.lineTo(canvas.width - 80, 680); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(80, 200); ctx.lineTo(canvas.width - 80, 200); ctx.stroke();
 
-            // Highlight Performance Hero Stat Block (Longest Ride Spotlight)
+            // Hero Stat
             ctx.font = 'bold 20px monospace';
             ctx.fillStyle = '#D4AF37';
             ctx.fillText('// HERO PERFORMANCE RIDE', 80, 720);
-
             ctx.font = 'bold 96px sans-serif';
             ctx.fillStyle = '#FFF';
             ctx.fillText(longestWave, 75, 755);
-
             ctx.font = '24px monospace';
             ctx.fillStyle = '#888892';
             ctx.fillText('UNASSISTED GLIDE DISTANCE', 420, 810);
 
             ctx.beginPath(); ctx.moveTo(80, 890); ctx.lineTo(canvas.width - 80, 890); ctx.stroke();
 
-            // Performance Secondary Row Details Grid
             function drawSubMetric(label, value, xPos, yPos) {
                 ctx.font = '16px monospace';
                 ctx.fillStyle = '#666670';
@@ -406,53 +396,36 @@ document.addEventListener('DOMContentLoaded', function () {
                 ctx.fillText(value, xPos, yPos + 24);
             }
 
-            drawSubMetric('⚡ MAX SPEED', `${data.maxSpeed} km/h`, 80, 930);
-            drawSubMetric('🦅 FLIGHT TIME', `${data.flightTime} min`, 340, 930);
-            drawSubMetric('🌊 RIDE COUNT', `${waveCount} Waves`, 600, 930);
-            drawSubMetric('🔋 MOTOR TIME', `${data.motorTime} min`, 840, 930);
+            drawSubMetric('⚡ MAX', `${data.maxSpeed} km/h`, 80, 930);
+            drawSubMetric('⏱️ SESSION', `${totalDurationMin} min`, 340, 930);
+            drawSubMetric('🌊 WAVES', `${waveCount}`, 600, 930);
+            drawSubMetric('🦅 FLIGHT', `${data.flightTime} min`, 840, 930);
 
             ctx.beginPath(); ctx.moveTo(80, 1040); ctx.lineTo(canvas.width - 80, 1040); ctx.stroke();
 
-            // Render Optional Equipment Bag Profile Stats if populated
+            // Gear
             if (fdVal || foilVal || wingVal) {
                 ctx.font = 'bold 18px monospace';
                 ctx.fillStyle = '#666670';
                 ctx.fillText('// EQUIPMENT PROFILE', 80, 1080);
-
                 let currentX = 80;
                 ctx.font = 'bold 24px sans-serif';
                 ctx.fillStyle = '#E5E5E7';
-
-                if (fdVal) {
-                    ctx.fillText(`⚡ ${fdVal}`, currentX, 1115);
-                    currentX += ctx.measureText(`⚡ ${fdVal}`).width + 40;
-                }
-                if (foilVal) {
-                    ctx.fillText(`🪽 ${foilVal}`, currentX, 1115);
-                    currentX += ctx.measureText(`🪽 ${foilVal}`).width + 40;
-                }
-                if (wingVal) {
-                    ctx.fillText(`💨 ${wingVal}`, currentX, 1115);
-                }
-            } else {
-                ctx.font = 'italic 22px sans-serif';
-                ctx.fillStyle = '#33333d';
-                ctx.fillText('Tracked with Swellpath Unassisted Wave Processing Engine.', 80, 1100);
+                if (fdVal) { ctx.fillText(`⚡ ${fdVal}`, currentX, 1115); currentX += ctx.measureText(`⚡ ${fdVal}`).width + 40; }
+                if (foilVal) { ctx.fillText(`🪽 ${foilVal}`, currentX, 1115); currentX += ctx.measureText(`🪽 ${foilVal}`).width + 40; }
+                if (wingVal) { ctx.fillText(`💨 ${wingVal}`, currentX, 1115); }
             }
 
-            // Editorial Footer Stamps
             ctx.strokeStyle = '#22222a';
             ctx.beginPath(); ctx.moveTo(80, 1200); ctx.lineTo(canvas.width - 80, 1200); ctx.stroke();
 
             ctx.font = 'bold 16px monospace';
             ctx.fillStyle = '#44444c';
             ctx.fillText('SWELLPATH.APP', 80, 1240);
-            
             ctx.textAlign = 'right';
             ctx.fillText('PRECISION FOIL ANALYTICS', canvas.width - 80, 1240);
             ctx.textAlign = 'left';
 
-            // Push final raw base64 data stream to preview frame image container node
             const imgUrl = canvas.toDataURL('image/png');
             const container = getEl('imageContainer');
             if (container) {
