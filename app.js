@@ -22,9 +22,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- 2. USER INTERACTION INTERFACES ---
     const toggleWaveOnly = getEl('toggleWaveOnly');
     if (toggleWaveOnly) {
-        toggleWaveOnly.addEventListener('change', () => { 
-            if (state.currentData) renderMap(); 
-        });
+        toggleWaveOnly.addEventListener('change', () => { if (state.currentData) renderMap(); });
     }
 
     const lockHeadingBtn = getEl('lockHeadingBtn');
@@ -46,10 +44,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 this.style.color = '#111';
                 this.style.border = 'none';
             }
-            if (state.currentData) {
-                calculateTracks(state.currentData);
-                renderMap();
-            }
+            if (state.currentData) { calculateTracks(state.currentData); renderMap(); }
         });
     }
 
@@ -57,9 +52,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (loadSessionBtn) {
         loadSessionBtn.addEventListener('click', () => {
             const savedSessions = getEl('savedSessions');
-            if (savedSessions && savedSessions.value) {
-                loadSession(savedSessions.value);
-            }
+            if (savedSessions && savedSessions.value) loadSession(savedSessions.value);
         });
     }
 
@@ -162,31 +155,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 let diff = Math.abs(brng - state.lockedHeading);
                 if ((diff > 180 ? 360 - diff : diff) < 50) isOutbound = true; 
             }
-
             if (!isOutbound) state.filteredTrack.push(curr);
 
             let speedCondition = false;
             if (!isCurrentlyOnWave) {
-                if (data.speeds[i] >= 16.5) { 
-                    speedCondition = true;
-                    isCurrentlyOnWave = true;
-                }
+                if (data.speeds[i] >= 16.5) { speedCondition = true; isCurrentlyOnWave = true; }
             } else {
                 if (data.speeds[i] >= 13.0) speedCondition = true;
                 else isCurrentlyOnWave = false;
             }
-
             let directionCondition = (angle > -170 && angle < -10);
-
             if (!isOutbound && speedCondition && directionCondition) {
                 currentRun.push({coord: curr, speed: data.speeds[i]});
             } else {
                 if (currentRun.length >= 6) allRuns.push([...currentRun]); 
-                currentRun = [];
-                isCurrentlyOnWave = false;
+                currentRun = []; isCurrentlyOnWave = false;
             }
         }
-        
         if (currentRun.length >= 6) allRuns.push([...currentRun]);
 
         let longestM = 0, maxWaveAvg = 0;
@@ -194,18 +179,11 @@ document.addEventListener('DOMContentLoaded', function () {
             let coordsOnly = run.map(p => p.coord);
             let rd = 0;
             for (let j=1; j<coordsOnly.length; j++) rd += calculateDistance(coordsOnly[j-1][0], coordsOnly[j-1][1], coordsOnly[j][0], coordsOnly[j][1]);
-            
             if (rd > longestM) { longestM = rd; state.longestTrack = coordsOnly; }
-
             let avgSpeed = run.reduce((sum, p) => sum + p.speed, 0) / run.length;
-            if (avgSpeed > maxWaveAvg) {
-                maxWaveAvg = avgSpeed;
-                state.fastestTrack = coordsOnly;
-            }
+            if (avgSpeed > maxWaveAvg) { maxWaveAvg = avgSpeed; state.fastestTrack = coordsOnly; }
         });
-
         state.waveTracks = allRuns.map(run => run.map(p => p.coord)).flat();
-        
         if (getEl('waveCount')) getEl('waveCount').textContent = allRuns.length;
         if (getEl('longestWave')) getEl('longestWave').textContent = `${Math.round(longestM)} m`;
         if (getEl('fastestWave')) getEl('fastestWave').textContent = maxWaveAvg > 0 ? `${maxWaveAvg.toFixed(1)} km/h` : "0.0 km/h";
@@ -216,31 +194,24 @@ document.addEventListener('DOMContentLoaded', function () {
     function renderMap() {
         if (!state.fullTrack.length || !getEl('mapContainer')) return;
         if (state.map) { state.map.remove(); state.map = null; }
-        
         state.map = L.map('mapContainer').setView(state.fullTrack[0], 14);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
-
         const showWavesOnly = toggleWaveOnly ? toggleWaveOnly.checked : false;
         const bgTrack = (state.lockedHeading !== null) ? state.filteredTrack : state.fullTrack;
-        
         if (!showWavesOnly) L.polyline(bgTrack, {color: '#A0A0A0', weight: 2, opacity: 0.4}).addTo(state.map);
         if (state.waveTracks.length > 0) L.polyline(state.waveTracks, {color: '#000', weight: 3}).addTo(state.map);
         if (state.longestTrack.length > 0) L.polyline(state.longestTrack, {color: '#D4AF37', weight: 6, opacity: 0.9}).addTo(state.map);
         if (state.fastestTrack.length > 0) L.polyline(state.fastestTrack, {color: '#00BCD4', weight: 4, dashArray: '5, 10'}).addTo(state.map);
-
         const bounds = (showWavesOnly && state.waveTracks.length > 0) ? state.waveTracks : state.fullTrack;
         state.map.fitBounds(L.latLngBounds(bounds));
     }
 
-    // --- 6. UI MANAGEMENT & PERSISTENCE ---
+    // --- 6. UI MANAGEMENT ---
     function populateSavedSessions() {
         const savedSelect = getEl('savedSessions');
         if (!savedSelect) return;
-        
         savedSelect.innerHTML = '<option value="">-- Saved Sessions --</option>';
-        let keys = Object.keys(localStorage).filter(k => k.startsWith('Swellpath_'))
-                        .sort((a,b) => b.split('_')[1] - a.split('_')[1]);
-
+        let keys = Object.keys(localStorage).filter(k => k.startsWith('Swellpath_')).sort((a,b) => b.split('_')[1] - a.split('_')[1]);
         keys.forEach(key => {
             const data = JSON.parse(localStorage.getItem(key));
             let opt = document.createElement('option');
@@ -255,200 +226,80 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!data) return;
         state.currentData = data;
         state.lockedHeading = null;
-        
         if (getEl('flightTime')) getEl('flightTime').textContent = `${data.flightTime} min`;
         if (getEl('motorTime')) getEl('motorTime').textContent = `${data.motorTime} min`;
         if (getEl('maxSpeed')) getEl('maxSpeed').textContent = `${data.maxSpeed} km/h`;
-
-        document.querySelectorAll('.metric-card').forEach(c => c.classList.remove('longest-wave-card', 'fastest-wave-card'));
-        
         calculateTracks(data);
         renderMap();
-
-        if (getEl('longestWave')) getEl('longestWave').closest('.metric-card').classList.add('longest-wave-card');
-        if (getEl('fastestWave')) getEl('fastestWave').closest('.metric-card').classList.add('fastest-wave-card');
         if (getEl('dashboard')) getEl('dashboard').classList.remove('dashboard-hidden');
     }
 
-    // --- 7. CANVAS SHARE BADGE GENERATOR (INSTAGRAM 4:5 FORMAT) ---
+    // --- 7. CANVAS SHARE BADGE GENERATOR ---
     const shareBtn = getEl('shareBtn');
     if (shareBtn) {
         shareBtn.addEventListener('click', function() {
-            if (!state.currentData || !state.fullTrack.length) {
-                alert("Please load a session before sharing!");
-                return;
-            }
+            if (!state.currentData || !state.fullTrack.length) return;
 
             const canvas = document.createElement('canvas');
-            canvas.width = 1080;
-            canvas.height = 1350;
+            canvas.width = 1080; canvas.height = 1350;
             const ctx = canvas.getContext('2d');
-
             const data = state.currentData;
-            const waveCount = getEl('waveCount') ? getEl('waveCount').textContent : '0';
-            const longestWave = getEl('longestWave') ? getEl('longestWave').textContent : '0 m';
-
-            // New Data Calculations
+            
             const durationMs = data.times[data.times.length - 1] - data.times[0];
             const totalDurationMin = Math.round(durationMs / 60000);
             const sessionDate = new Date(data.times[0]).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
             const startTime = new Date(data.times[0]).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const location = "Uxbridge, ON"; 
 
-            const fdVal = getEl('gearFoilDrive') ? getEl('gearFoilDrive').value.trim() : '';
-            const foilVal = getEl('gearFoil') ? getEl('gearFoil').value.trim() : '';
-            const wingVal = getEl('gearWing') ? getEl('gearWing').value.trim() : '';
-
-            localStorage.setItem('swellpath_pref_foildrive', fdVal);
-            localStorage.setItem('swellpath_pref_foil', foilVal);
-            localStorage.setItem('swellpath_pref_wing', wingVal);
-
-            // Deep Navy Theme Base
-            ctx.fillStyle = '#001f3f'; 
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Coordinate Grid
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-            ctx.lineWidth = 1;
-            for (let x = 0; x < canvas.width; x += 50) {
-                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 680); ctx.stroke();
-            }
-            for (let y = 0; y < 680; y += 50) {
-                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-            }
+            ctx.fillStyle = '#001f3f'; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
             state.fullTrack.forEach(pt => {
                 if (pt[0] < minLat) minLat = pt[0]; if (pt[0] > maxLat) maxLat = pt[0];
                 if (pt[1] < minLon) minLon = pt[1]; if (pt[1] > maxLon) maxLon = pt[1];
             });
-
-            const latRange = maxLat - minLat || 0.001;
-            const lonRange = maxLon - minLon || 0.001;
-            
-            const mapX = 80, mapY = 160, mapW = 920, mapH = 480;
+            const latRange = maxLat - minLat || 0.001, lonRange = maxLon - minLon || 0.001;
+            const mapX = 80, mapY = 220, mapW = 920, mapH = 450;
             const scale = Math.min(mapW / lonRange, mapH / latRange);
-            const xOffset = mapX + (mapW - lonRange * scale) / 2;
-            const yOffset = mapY + (mapH - latRange * scale) / 2;
+            const xOffset = mapX + (mapW - lonRange * scale) / 2, yOffset = mapY + (mapH - latRange * scale) / 2;
 
             function scaleX(lon) { return xOffset + (lon - minLon) * scale; }
             function scaleY(lat) { return (yOffset + mapH) - (lat - minLat) * scale; }
 
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#7FDBFF'; ctx.lineWidth = 4;
             ctx.beginPath();
-            state.fullTrack.forEach((pt, idx) => { ctx.lineTo(scaleX(pt[1]), scaleY(pt[0])); });
+            state.fullTrack.forEach(pt => ctx.lineTo(scaleX(pt[1]), scaleY(pt[0])));
             ctx.stroke();
 
-            // Longest Ride
-            if (state.longestTrack && state.longestTrack.length > 0) {
-                ctx.save();
-                ctx.strokeStyle = '#D4AF37'; 
-                ctx.lineWidth = 7;
-                ctx.shadowBlur = 15;
-                ctx.shadowColor = 'rgba(212, 175, 55, 0.6)';
-                ctx.beginPath();
-                state.longestTrack.forEach((pt, idx) => {
-                    const x = scaleX(pt[1]); const y = scaleY(pt[0]);
-                    if (idx === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-                });
-                ctx.stroke();
-                ctx.restore();
-            }
-
-            // Headers & New Meta
-            ctx.textBaseline = 'top';
-            ctx.font = 'bold 22px monospace';
-            ctx.fillStyle = '#666670';
-            ctx.fillText('// SWELLPATH PRECISION LABS', 80, 60);
-
-            ctx.font = 'bold 42px sans-serif';
-            ctx.fillStyle = '#FFF';
-            ctx.fillText(`${data.displayName}`, 80, 95);
-            
-            ctx.font = '22px monospace';
-            ctx.fillStyle = '#7FDBFF';
-            ctx.fillText(`${location}  •  ${sessionDate}  •  ${startTime}  •  26°C`, 80, 150);
-
-            ctx.strokeStyle = '#003366';
-            ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.moveTo(80, 200); ctx.lineTo(canvas.width - 80, 200); ctx.stroke();
-
-            // Hero Stat
-            ctx.font = 'bold 20px monospace';
-            ctx.fillStyle = '#D4AF37';
-            ctx.fillText('// HERO PERFORMANCE RIDE', 80, 720);
-            ctx.font = 'bold 96px sans-serif';
-            ctx.fillStyle = '#FFF';
-            ctx.fillText(longestWave, 75, 755);
-            ctx.font = '24px monospace';
-            ctx.fillStyle = '#888892';
-            ctx.fillText('UNASSISTED GLIDE DISTANCE', 420, 810);
-
-            ctx.beginPath(); ctx.moveTo(80, 890); ctx.lineTo(canvas.width - 80, 890); ctx.stroke();
+            ctx.font = 'bold 48px sans-serif'; ctx.fillStyle = '#FFF';
+            ctx.fillText(`${data.displayName}`, 80, 80);
+            ctx.font = '32px sans-serif'; ctx.fillStyle = '#7FDBFF';
+            ctx.fillText(`Uxbridge, ON • ${sessionDate} • ${startTime} • 26°C`, 80, 140);
 
             function drawSubMetric(label, value, xPos, yPos) {
-                ctx.font = '16px monospace';
-                ctx.fillStyle = '#666670';
+                ctx.font = '24px sans-serif'; ctx.fillStyle = '#AAAAAA';
                 ctx.fillText(label, xPos, yPos);
-                ctx.font = 'bold 38px sans-serif';
-                ctx.fillStyle = '#FFF';
-                ctx.fillText(value, xPos, yPos + 24);
+                ctx.font = 'bold 56px sans-serif'; ctx.fillStyle = '#FFF';
+                ctx.fillText(value, xPos, yPos + 50);
             }
 
-            drawSubMetric('⚡ MAX', `${data.maxSpeed} km/h`, 80, 930);
-            drawSubMetric('⏱️ SESSION', `${totalDurationMin} min`, 340, 930);
-            drawSubMetric('🌊 WAVES', `${waveCount}`, 600, 930);
-            drawSubMetric('🦅 FLIGHT', `${data.flightTime} min`, 840, 930);
-
-            ctx.beginPath(); ctx.moveTo(80, 1040); ctx.lineTo(canvas.width - 80, 1040); ctx.stroke();
-
-            // Gear
-            if (fdVal || foilVal || wingVal) {
-                ctx.font = 'bold 18px monospace';
-                ctx.fillStyle = '#666670';
-                ctx.fillText('// EQUIPMENT PROFILE', 80, 1080);
-                let currentX = 80;
-                ctx.font = 'bold 24px sans-serif';
-                ctx.fillStyle = '#E5E5E7';
-                if (fdVal) { ctx.fillText(`⚡ ${fdVal}`, currentX, 1115); currentX += ctx.measureText(`⚡ ${fdVal}`).width + 40; }
-                if (foilVal) { ctx.fillText(`🪽 ${foilVal}`, currentX, 1115); currentX += ctx.measureText(`🪽 ${foilVal}`).width + 40; }
-                if (wingVal) { ctx.fillText(`💨 ${wingVal}`, currentX, 1115); }
-            }
-
-            ctx.strokeStyle = '#22222a';
-            ctx.beginPath(); ctx.moveTo(80, 1200); ctx.lineTo(canvas.width - 80, 1200); ctx.stroke();
-
-            ctx.font = 'bold 16px monospace';
-            ctx.fillStyle = '#44444c';
-            ctx.fillText('SWELLPATH.APP', 80, 1240);
-            ctx.textAlign = 'right';
-            ctx.fillText('PRECISION FOIL ANALYTICS', canvas.width - 80, 1240);
-            ctx.textAlign = 'left';
+            drawSubMetric('⚡ MAX SPEED', `${data.maxSpeed} km/h`, 80, 850);
+            drawSubMetric('⏱️ TOTAL TIME', `${totalDurationMin} min`, 580, 850);
+            drawSubMetric('🌊 WAVES', `${getEl('waveCount').textContent}`, 80, 1050);
+            drawSubMetric('🦅 FLIGHT', `${data.flightTime} min`, 580, 1050);
 
             const imgUrl = canvas.toDataURL('image/png');
             const container = getEl('imageContainer');
-            if (container) {
-                container.innerHTML = `<img src="${imgUrl}" style="max-width:100%; height:auto; border:1px solid #222; border-radius:8px;" alt="Instagram Session Badge"/>`;
-            }
+            if (container) container.innerHTML = `<img src="${imgUrl}" style="width:100%; border-radius:8px;"/>`;
             if (getEl('shareModal')) getEl('shareModal').style.display = 'flex';
         });
     }
 
-    const closeShareBtn = getEl('closeShareBtn');
-    if (closeShareBtn) {
-        closeShareBtn.addEventListener('click', () => {
-            if (getEl('shareModal')) getEl('shareModal').style.display = 'none';
-        });
-    }
-
-    // --- 8. GEOSPATIAL MATH HELPERS ---
+    // --- 8. MATH HELPERS ---
     function calculateDistance(lat1, lon1, lat2, lon2) {
         const R = 6371e3, p = Math.PI/180;
         const a = 0.5 - Math.cos((lat2-lat1)*p)/2 + Math.cos(lat1*p)*Math.cos(lat2*p)*(1-Math.cos((lon2-lon1)*p))/2;
         return R * 2 * Math.asin(Math.sqrt(a));
     }
-    
     function calculateBearing(lat1, lon1, lat2, lon2) {
         const rad = Math.PI / 180;
         const y = Math.sin((lon2 - lon1) * rad) * Math.cos(lat2 * rad);
