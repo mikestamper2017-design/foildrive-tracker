@@ -261,7 +261,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const mapX = 80, mapY = 220, mapW = 920, mapH = 450;
             const scale = Math.min(mapW / lonRange, mapH / latRange);
             const xOffset = mapX + (mapW - lonRange * scale) / 2, yOffset = mapY + (mapH - latRange * scale) / 2;
-            
+
             function scaleX(lon) { return xOffset + (lon - minLon) * scale; }
             function scaleY(lat) { return (yOffset + mapH) - (lat - minLat) * scale; }
 
@@ -270,7 +270,7 @@ document.addEventListener('DOMContentLoaded', function () {
             state.fullTrack.forEach(pt => ctx.lineTo(scaleX(pt[1]), scaleY(pt[0])));
             ctx.stroke();
 
-            // Hero Gold Highlight
+            // HERO RIDE GOLD HIGHLIGHT
             if (state.longestTrack && state.longestTrack.length > 0) {
                 ctx.strokeStyle = '#D4AF37'; ctx.lineWidth = 10;
                 ctx.shadowBlur = 20; ctx.shadowColor = '#D4AF37';
@@ -282,25 +282,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 ctx.shadowBlur = 0;
             }
 
-            // Headers
             ctx.font = 'bold 56px sans-serif'; ctx.fillStyle = '#FFF';
             ctx.fillText(`${data.displayName}`, 80, 80);
             ctx.font = '36px sans-serif'; ctx.fillStyle = '#7FDBFF';
             ctx.fillText(`SESSION REPORT • ${sessionDate} • ${startTime}`, 80, 150);
 
-            // Hero Metric
+            // HERO RIDE DISTANCE
             ctx.font = 'bold 32px sans-serif'; ctx.fillStyle = '#D4AF37';
             ctx.fillText('HERO RIDE DISTANCE', 80, 750);
             ctx.font = 'bold 120px sans-serif'; ctx.fillStyle = '#FFF';
             ctx.fillText(getEl('longestWave').textContent, 80, 850);
 
-            // Sub Metrics
             function drawSubMetric(icon, label, value, xPos, yPos) {
                 ctx.font = '80px sans-serif'; ctx.fillText(icon, xPos, yPos + 55);
                 ctx.font = 'bold 32px sans-serif'; ctx.fillStyle = '#AAAAAA';
-                ctx.fillText(label, xPos + 110, yPos + 15);
+                ctx.fillText(label, xPos + 100, yPos + 15);
                 ctx.font = 'bold 64px sans-serif'; ctx.fillStyle = '#FFF';
-                ctx.fillText(value, xPos + 110, yPos + 75);
+                ctx.fillText(value, xPos + 100, yPos + 75);
             }
 
             drawSubMetric('⚡', 'MAX SPEED', `${data.maxSpeed} km/h`, 80, 920);
@@ -315,7 +313,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // --- 8. MATH HELPERS ---
     function calculateDistance(lat1, lon1, lat2, lon2) {
         const R = 6371e3, p = Math.PI/180;
         const a = 0.5 - Math.cos((lat2-lat1)*p)/2 + Math.cos(lat1*p)*Math.cos(lat2*p)*(1-Math.cos((lon2-lon1)*p))/2;
