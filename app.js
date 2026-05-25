@@ -265,27 +265,28 @@ document.addEventListener('DOMContentLoaded', function () {
             function scaleX(lon) { return xOffset + (lon - minLon) * scale; }
             function scaleY(lat) { return (yOffset + mapH) - (lat - minLat) * scale; }
 
-            ctx.strokeStyle = '#7FDBFF'; ctx.lineWidth = 4;
+            ctx.strokeStyle = '#7FDBFF'; ctx.lineWidth = 6;
             ctx.beginPath();
             state.fullTrack.forEach(pt => ctx.lineTo(scaleX(pt[1]), scaleY(pt[0])));
             ctx.stroke();
 
-            ctx.font = 'bold 48px sans-serif'; ctx.fillStyle = '#FFF';
+            ctx.font = 'bold 56px sans-serif'; ctx.fillStyle = '#FFF';
             ctx.fillText(`${data.displayName}`, 80, 80);
-            ctx.font = '32px sans-serif'; ctx.fillStyle = '#7FDBFF';
-            ctx.fillText(`Uxbridge, ON • ${sessionDate} • ${startTime} • 26°C`, 80, 140);
+            ctx.font = '36px sans-serif'; ctx.fillStyle = '#7FDBFF';
+            ctx.fillText(`Uxbridge, ON • ${sessionDate} • ${startTime} • 26°C`, 80, 150);
 
-            function drawSubMetric(label, value, xPos, yPos) {
-                ctx.font = '24px sans-serif'; ctx.fillStyle = '#AAAAAA';
-                ctx.fillText(label, xPos, yPos);
-                ctx.font = 'bold 56px sans-serif'; ctx.fillStyle = '#FFF';
-                ctx.fillText(value, xPos, yPos + 50);
+            function drawSubMetric(icon, label, value, xPos, yPos) {
+                ctx.font = '80px sans-serif'; ctx.fillText(icon, xPos, yPos + 55);
+                ctx.font = 'bold 32px sans-serif'; ctx.fillStyle = '#AAAAAA';
+                ctx.fillText(label, xPos + 100, yPos + 15);
+                ctx.font = 'bold 64px sans-serif'; ctx.fillStyle = '#FFF';
+                ctx.fillText(value, xPos + 100, yPos + 75);
             }
 
-            drawSubMetric('⚡ MAX SPEED', `${data.maxSpeed} km/h`, 80, 850);
-            drawSubMetric('⏱️ TOTAL TIME', `${totalDurationMin} min`, 580, 850);
-            drawSubMetric('🌊 WAVES', `${getEl('waveCount').textContent}`, 80, 1050);
-            drawSubMetric('🦅 FLIGHT', `${data.flightTime} min`, 580, 1050);
+            drawSubMetric('⚡', 'MAX SPEED', `${data.maxSpeed} km/h`, 80, 800);
+            drawSubMetric('⏱️', 'SESSION TIME', `${totalDurationMin} min`, 580, 800);
+            drawSubMetric('🌊', 'RIDE COUNT', `${getEl('waveCount').textContent}`, 80, 1000);
+            drawSubMetric('🦅', 'FLIGHT TIME', `${data.flightTime} min`, 580, 1000);
 
             const imgUrl = canvas.toDataURL('image/png');
             const container = getEl('imageContainer');
@@ -294,7 +295,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // --- 8. MATH HELPERS ---
     function calculateDistance(lat1, lon1, lat2, lon2) {
         const R = 6371e3, p = Math.PI/180;
         const a = 0.5 - Math.cos((lat2-lat1)*p)/2 + Math.cos(lat1*p)*Math.cos(lat2*p)*(1-Math.cos((lon2-lon1)*p))/2;
