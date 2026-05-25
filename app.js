@@ -270,28 +270,10 @@ document.addEventListener('DOMContentLoaded', function () {
             state.fullTrack.forEach(pt => ctx.lineTo(scaleX(pt[1]), scaleY(pt[0])));
             ctx.stroke();
 
-            // HERO RIDE GOLD HIGHLIGHT
-            if (state.longestTrack && state.longestTrack.length > 0) {
-                ctx.strokeStyle = '#D4AF37'; ctx.lineWidth = 10;
-                ctx.shadowBlur = 20; ctx.shadowColor = '#D4AF37';
-                ctx.beginPath();
-                state.longestTrack.forEach((pt, idx) => {
-                    idx === 0 ? ctx.moveTo(scaleX(pt[1]), scaleY(pt[0])) : ctx.lineTo(scaleX(pt[1]), scaleY(pt[0]));
-                });
-                ctx.stroke();
-                ctx.shadowBlur = 0;
-            }
-
             ctx.font = 'bold 56px sans-serif'; ctx.fillStyle = '#FFF';
             ctx.fillText(`${data.displayName}`, 80, 80);
             ctx.font = '36px sans-serif'; ctx.fillStyle = '#7FDBFF';
-            ctx.fillText(`SESSION REPORT • ${sessionDate} • ${startTime}`, 80, 150);
-
-            // HERO RIDE DISTANCE
-            ctx.font = 'bold 32px sans-serif'; ctx.fillStyle = '#D4AF37';
-            ctx.fillText('HERO RIDE DISTANCE', 80, 750);
-            ctx.font = 'bold 120px sans-serif'; ctx.fillStyle = '#FFF';
-            ctx.fillText(getEl('longestWave').textContent, 80, 850);
+            ctx.fillText(`Uxbridge, ON • ${sessionDate} • ${startTime} • 26°C`, 80, 150);
 
             function drawSubMetric(icon, label, value, xPos, yPos) {
                 ctx.font = '80px sans-serif'; ctx.fillText(icon, xPos, yPos + 55);
@@ -301,10 +283,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 ctx.fillText(value, xPos + 100, yPos + 75);
             }
 
-            drawSubMetric('⚡', 'MAX SPEED', `${data.maxSpeed} km/h`, 80, 920);
-            drawSubMetric('⏱️', 'SESSION TIME', `${totalDurationMin} min`, 580, 920);
-            drawSubMetric('🌊', 'RIDE COUNT', `${getEl('waveCount').textContent}`, 80, 1120);
-            drawSubMetric('🦅', 'FLIGHT TIME', `${data.flightTime} min`, 580, 1120);
+            drawSubMetric('⚡', 'MAX SPEED', `${data.maxSpeed} km/h`, 80, 800);
+            drawSubMetric('⏱️', 'SESSION TIME', `${totalDurationMin} min`, 580, 800);
+            drawSubMetric('🌊', 'RIDE COUNT', `${getEl('waveCount').textContent}`, 80, 1000);
+            drawSubMetric('🦅', 'FLIGHT TIME', `${data.flightTime} min`, 580, 1000);
 
             const imgUrl = canvas.toDataURL('image/png');
             const container = getEl('imageContainer');
