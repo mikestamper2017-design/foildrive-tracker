@@ -128,13 +128,54 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    getEl('shareBtn')?.addEventListener('click', function() {
-        const canvas = document.createElement('canvas'); canvas.width = 1080; canvas.height = 1350;
-        const ctx = canvas.getContext('2d');
-        ctx.fillStyle = '#0a0d14'; ctx.fillRect(0, 0, 1080, 1350);
-        ctx.fillStyle = '#FFF'; ctx.font = 'bold 64px Helvetica'; ctx.fillText("FOIL SESSION", 80, 120);
-        getEl('imageContainer').innerHTML = `<img src="${canvas.toDataURL()}" style="width:100%"/>`;
-        getEl('shareModal').style.display = 'flex';
-    });
-    getEl('closeShareModal')?.addEventListener('click', () => getEl('shareModal').style.display = 'none');
+    // --- UPDATED BADGE GENERATOR ---
+getEl('shareBtn')?.addEventListener('click', function() {
+    if (!state.currentData) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = 1080; canvas.height = 1350;
+    const ctx = canvas.getContext('2d');
+    const data = state.currentData;
+    const loc = getEl('locationInput')?.value || "SESSION";
+    
+    // Background
+    ctx.fillStyle = '#0a0d14'; ctx.fillRect(0, 0, 1080, 1350);
+
+    // Text Header
+    ctx.fillStyle = '#FFF'; ctx.font = 'bold 64px Helvetica, sans-serif'; ctx.fillText("FOIL SESSION", 80, 120);
+    ctx.fillStyle = '#888'; ctx.font = '32px Helvetica, sans-serif'; ctx.fillText(`${loc.toUpperCase()} • ${data.dateStr}`, 80, 180);
+
+    // Map Drawing Logic
+    let minLat = Math.min(...data.lats), maxLat = Math.max(...data.lats);
+    let minLon = Math.min(...data.lons), maxLon = Math.max(...data.lons);
+    const scale = Math.min(920 / (maxLon - minLon || 0.001), 400 / (maxLat - minLat || 0.001));
+    const sX = (lon) => 80 + (lon - minLon) * scale;
+    const sY = (lat) => 650 - (lat - minLat) * scale;
+
+    ctx.strokeStyle = '#222'; ctx.lineWidth = 3;
+    ctx.beginPath();
+    data.lats.forEach((lat, i) => i === 0 ? ctx.moveTo(sX(data.lons[i]), sY(lat)) : ctx.lineTo(sX(data.lons[i]), sY(lat)));
+    ctx.stroke();
+
+    // Gold Highlight for longest ride
+    ctx.strokeStyle = '#D4AF37'; ctx.lineWidth = 6;
+    ctx.beginPath();
+    state.longestTrack.forEach((pt, i) => i === 0 ? ctx.moveTo(sX(pt[1]), sY(pt[0])) : ctx.lineTo(sX(pt[1]), sY(pt[0])));
+    ctx.stroke();
+
+    // Stats Grid
+    const drawMetric = (label, val, x, y) => {
+        ctx.fillStyle = '#666'; ctx.font = 'bold 24px Helvetica, sans-serif'; ctx.fillText(label, x, y);
+        ctx.fillStyle = '#FFF'; ctx.font = 'bold 48px Helvetica, sans-serif'; ctx.fillText(val, x, y + 60);
+    };
+
+    drawMetric('HERO RIDE', getEl('longestWave')?.textContent || '0m', 80, 850);
+    drawMetric('MAX SPEED', `${data.maxSpeed} km/h`, 580, 850);
+    drawMetric('WAVES', getEl('waveCount')?.textContent || '0', 80, 1050);
+    drawMetric('FLIGHT', `${data.flightTime} min`, 580, 1050);
+    drawMetric('MOTOR', `${data.motorTime} min`, 80, 1250);
+
+    // Finalize
+    const imgUrl = canvas.toDataURL('image/png');
+    getEl('imageContainer').innerHTML = `<img src="${imgUrl}" style="width:100%; border-radius:8px;"/>`;
+    getEl('shareModal').style.display = 'flex';
 });
