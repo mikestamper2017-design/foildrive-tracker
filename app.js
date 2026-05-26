@@ -17,26 +17,34 @@ document.addEventListener('DOMContentLoaded', function () {
     const fileInput = getEl('fileInput');
     
     if (dropZone && fileInput) {
-        dropZone.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', (e) => { if (e.target.files.length) handleFileUpload(e.target.files[0]); });
-        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--accent-color)'; });
-        dropZone.addEventListener('drop', (e) => { e.preventDefault(); if (e.dataTransfer.files.length) handleFileUpload(e.dataTransfer.files[0]); });
-    }
+        // Ensure click on dropZone triggers the hidden input
+        dropZone.addEventListener('click', (e) => {
+            fileInput.click();
+        });
 
-    function handleFileUpload(file) {
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            const gear = {
-                location: getEl('locationInput')?.value || "Unknown",
-                drive: getEl('gearFoilDrive')?.value || "N/A",
-                foil: getEl('gearFoil')?.value || "N/A",
-                wing: getEl('gearWing')?.value || "N/A"
-            };
-            const key = parseGPX(ev.target.result, file.name, gear);
-            populateSavedSessions();
-            loadSession(key);
-        };
-        reader.readAsText(file);
+        // Handle file selection via input
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) handleFileUpload(e.target.files[0]);
+        });
+
+        // Drag and Drop handlers
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.backgroundColor = 'rgba(255,255,255,0.05)';
+        });
+
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.style.backgroundColor = 'transparent';
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.backgroundColor = 'transparent';
+            if (e.dataTransfer.files.length) {
+                handleFileUpload(e.dataTransfer.files[0]);
+            }
+        });
     }
 
     // --- CORE LOGIC ---
