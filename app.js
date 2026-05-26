@@ -130,6 +130,15 @@ fileInput.addEventListener('change', (e) => {
     }
 
     function loadSession(key) {
+    const data = JSON.parse(localStorage.getItem(key));
+    if(!data) return;
+    
+    // ADD THIS LINE
+    getEl('dashboard').classList.remove('dashboard-hidden'); 
+    
+    state.currentData = data;
+    // ... rest of your code
+}
         const data = JSON.parse(localStorage.getItem(key));
         if(!data) return;
         state.currentData = data;
