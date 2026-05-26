@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Swellpath - Precision Session Analytics (Dark Mode v1.4)
+   Swellpath - Precision Session Analytics (Dark Mode v1.5)
    Unified Production Layout & Interaction Fixes
    ========================================================================== */
 
@@ -76,7 +76,6 @@ body {
     margin: 0 auto;
     padding: 0 15px;
     width: 100%;
-    overflow-x: hidden; 
 }
 
 /* Instructions Panel */
@@ -142,17 +141,9 @@ body {
     pointer-events: none; 
 }
 
-/* Accessible Hidden Upload Input Node */
 #fileInput {
     position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    border: 0;
-    display: inline-block !important; 
+    width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; display: inline-block !important; 
 }
 
 /* Saved Sessions Panel */
@@ -187,7 +178,6 @@ select {
     padding: 10px;
     font-size: 14px;
     outline: none;
-    max-width: 100%; 
 }
 
 /* Shared Button Styles */
@@ -203,295 +193,49 @@ select {
     transition: all 0.2s ease;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    white-space: nowrap; 
 }
 
-.action-btn:hover {
-    background: var(--silver-color);
-    transform: translateY(-1px);
-}
+.action-btn:hover { background: var(--silver-color); transform: translateY(-1px); }
 
-.action-btn:active {
-    transform: translateY(1px);
-}
-
-/* Specific button overrides */
 #lockHeadingBtn {
     background: transparent;
     border: 1px solid var(--border-color);
     color: var(--text-primary);
-    margin-bottom: 0;
     font-size: 13px;
 }
 
-#lockHeadingBtn:hover {
-    border-color: var(--accent-color);
-}
+#lockHeadingBtn:hover { border-color: var(--accent-color); }
 
 /* Dashboard Grid */
-.dashboard {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-    margin-bottom: 24px;
-}
+.dashboard { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+.dashboard-hidden { display: none; }
+.metric-card { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 18px 14px; display: flex; flex-direction: column; }
+.metric-card .label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 4px; }
+.metric-card .value { font-size: 20px; font-weight: 700; }
+.longest-wave-card { grid-column: span 2; background: linear-gradient(135deg, rgba(212, 175, 55, 0.12) 0%, rgba(18, 18, 18, 1) 100%); border: 1px solid rgba(212, 175, 55, 0.4); }
+.fastest-wave-card { grid-column: span 2; }
 
-.dashboard-hidden {
-    display: none;
-}
+/* Gear Panel */
+.gear-panel { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 20px; margin-bottom: 24px; }
+.gear-panel h4 { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-primary); margin-bottom: 14px; }
+.gear-form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.gear-input-group { display: flex; flex-direction: column; gap: 6px; }
+.gear-input-group label { font-size: 10px; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.5px; }
+.gear-input-group input { background: #0A0A0A; border: 1px solid var(--border-color); border-radius: 6px; padding: 10px; color: var(--text-primary); font-size: 13px; }
 
-.metric-card {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 18px 14px;
-    display: flex;
-    flex-direction: column;
-}
+/* Controls & Map */
+.controls-wrapper { display: flex; justify-content: space-between; align-items: flex-start; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 20px; margin-bottom: 24px; }
+.button-stack { display: flex; flex-direction: column; gap: 10px; width: 220px; }
+.map-container { height: 400px; width: 100%; border-radius: var(--border-radius); border: 1px solid var(--border-color); background: #000; overflow: hidden; }
 
-.metric-card .label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-secondary);
-    margin-bottom: 4px;
-}
+/* Modal & Badge */
+.share-modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(6, 6, 8, 0.9); z-index: 10000; justify-content: center; align-items: center; }
+.share-modal-card { background: #0d0d11; padding: 24px; border-radius: 12px; border: 1px solid #222227; text-align: center; max-width: 440px; width: 90%; }
+#closeShareModal { background: transparent; border: 1px solid #33333d; color: #A0A0A0; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 14px; margin-top: 15px; }
+#closeShareModal:hover { border-color: #555562; color: #FFF; background: #1e1e24; }
 
-.metric-card .value {
-    font-size: 20px; 
-    font-weight: 700;
-}
-
-.longest-wave-card {
-    grid-column: span 2;
-    background: linear-gradient(135deg, rgba(212, 175, 55, 0.12) 0%, rgba(18, 18, 18, 1) 100%);
-    border: 1px solid rgba(212, 175, 55, 0.4);
-}
-
-.fastest-wave-card {
-    grid-column: span 2;
-}
-
-/* Optional Gear Panel Section Styles */
-.gear-panel {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 20px;
-    margin-bottom: 24px;
-}
-
-.gear-panel h4 {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-primary);
-    margin-bottom: 14px;
-    display: flex;
-    justify-content: space-between;
-}
-
-.gear-panel .optional-tag {
-    color: #66666e;
-    font-size: 11px;
-    text-transform: none;
-}
-
-.gear-form-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-}
-
-.gear-input-group {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.gear-input-group label {
-    font-size: 10px;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-    letter-spacing: 0.5px;
-    font-weight: 600;
-}
-
-.gear-input-group input {
-    background: #0A0A0A;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    padding: 10px;
-    color: var(--text-primary);
-    font-size: 13px;
-    outline: none;
-    transition: border-color 0.2s;
-}
-
-.gear-input-group input:focus {
-    border-color: var(--accent-color);
-}
-
-/* Controls Wrapper */
-.controls-wrapper {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: var(--border-radius);
-    padding: 20px;
-    margin-bottom: 24px;
-}
-
-.button-stack {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    width: 220px;
-}
-
-/* Toggle Switch Layout */
-.switch-container {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    cursor: pointer;
-    font-size: 13px;
-    color: var(--text-secondary);
-}
-
-.slider {
-    position: relative;
-    display: inline-block;
-    width: 42px;
-    height: 24px;
-    background-color: var(--border-color);
-    border-radius: 20px;
-    transition: 0.2s;
-}
-
-.slider:before {
-    position: absolute;
-    content: "";
-    height: 18px;
-    width: 18px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    border-radius: 50%;
-    transition: 0.2s;
-}
-
-input:checked + .slider {
-    background-color: var(--accent-color);
-}
-
-input:checked + .slider:before {
-    transform: translateX(18px);
-}
-
-/* Map Container Layout */
-.map-container {
-    height: 400px; 
-    width: 100%;
-    border-radius: var(--border-radius);
-    border: 1px solid var(--border-color);
-    background: #000;
-    overflow: hidden;
-    z-index: 1;
-}
-
-.leaflet-container {
-    background: #000 !important;
-}
-
-/* Share Modal Overlay Layout Frame configuration styling */
-.share-modal-overlay {
-    display: none; 
-    position: fixed; 
-    top: 0; left: 0; width: 100%; height: 100%; 
-    background: rgba(6, 6, 8, 0.88); 
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    z-index: 10000; 
-    justify-content: center; 
-    align-items: center; 
-    flex-direction: column; 
-}
-
-.share-modal-card {
-    background: #0d0d11; 
-    padding: 24px; 
-    border-radius: 12px; 
-    border: 1px solid #222227; 
-    text-align: center;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-}
-
-.share-modal-card h3 {
-    color: #FFF; margin-top: 0; font-size: 18px; letter-spacing: -0.5px;
-}
-
-.share-modal-card p {
-    color: #888892; font-size: 13px; margin-bottom: 20px;
-}
-
-#imageContainer img {
-    max-width: 100%; height: auto; border: 1px solid #222227; border-radius: 6px;
-}
-
-#closeShareBtn {
-    background: transparent; border: 1px solid #33333d; color: #A0A0A0; 
-    padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500;
-}
-
-#closeShareBtn:hover {
-    border-color: #555562; color: #FFF;
-}
-
-.insta-card-wrapper {
-    max-width: 440px !important; 
-    width: 90% !important;
-}
-
-/* Structural Breakpoint Overrides */
 @media (max-width: 768px) {
-    .dashboard {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .controls-wrapper {
-        flex-direction: column;
-        gap: 20px;
-    }
-
-    .button-stack {
-        width: 100%;
-    }
-
-    .mobile-text { display: block; }
-    .desktop-text { display: none; }
-    .instructions-grid { grid-template-columns: 1fr; }
-
-    .saved-panel {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .saved-panel select, 
-    .saved-panel .action-btn {
-        width: 100%;
-    }
-
-    .gear-form-grid {
-        grid-template-columns: 1fr;
-        gap: 14px;
-    }
-}
-
-@media (max-width: 480px) {
-    .metric-card .value { font-size: 18px; }
-    .logo { font-size: 32px; }
+    .dashboard { grid-template-columns: repeat(2, 1fr); }
+    .controls-wrapper { flex-direction: column; gap: 20px; }
+    .button-stack { width: 100%; }
 }
