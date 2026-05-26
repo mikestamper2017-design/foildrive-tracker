@@ -158,27 +158,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     getEl('shareBtn')?.addEventListener('click', function() {
         if (!state.currentData) return;
+        
         const canvas = document.createElement('canvas');
         canvas.width = 1080; canvas.height = 1350;
         const ctx = canvas.getContext('2d');
         const data = state.currentData;
         
-        // 1. Background
         ctx.fillStyle = '#0a0d14'; ctx.fillRect(0, 0, 1080, 1350);
         
-        // 2. Draw Track Path (The "Map-Snap")
-        ctx.strokeStyle = '#333'; ctx.lineWidth = 4;
+        // Track Path
+        ctx.strokeStyle = '#D4AF37'; ctx.lineWidth = 6;
         ctx.beginPath();
         const minLat = Math.min(...data.lats), maxLat = Math.max(...data.lats);
         const minLon = Math.min(...data.lons), maxLon = Math.max(...data.lons);
         data.lats.forEach((lat, i) => {
-            const x = ((data.lons[i] - minLon) / (maxLon - minLon)) * 800 + 140;
-            const y = 500 - ((lat - minLat) / (maxLat - minLat)) * 300;
+            const x = ((data.lons[i] - minLon) / (maxLon - minLon || 1)) * 800 + 140;
+            const y = 400 - ((lat - minLat) / (maxLat - minLat || 1)) * 300;
             i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
         });
         ctx.stroke();
 
-        // 3. Text Content
         ctx.fillStyle = '#FFF'; ctx.font = 'bold 72px Helvetica'; ctx.fillText("FOIL SESSION", 80, 120);
         ctx.fillStyle = '#888'; ctx.font = '36px Helvetica'; ctx.fillText(`${data.gear.location.toUpperCase()} • ${data.dateStr}`, 80, 180);
 
@@ -195,7 +194,15 @@ document.addEventListener('DOMContentLoaded', () => {
         drawMetric('WAVES', getEl('waveCount').textContent, 80, 1150);
         drawMetric('FLIGHT', `${data.flightTime} min`, 550, 1150);
 
-        getEl('imageContainer').innerHTML = `<img src="${canvas.toDataURL('image/png')}" style="width:100%; border-radius: 12px;"/>`;
+        // Crucial: Set image source to canvas data URL
+        const imageContainer = getEl('imageContainer');
+        imageContainer.innerHTML = '';
+        const img = new Image();
+        img.src = canvas.toDataURL('image/png');
+        img.style.width = '100%';
+        img.style.borderRadius = '12px';
+        imageContainer.appendChild(img);
+        
         getEl('shareModal').style.display = 'flex';
     });
 
