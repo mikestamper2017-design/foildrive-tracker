@@ -171,9 +171,29 @@ document.addEventListener('DOMContentLoaded', function () {
         getEl('shareModal').style.display = 'flex';
     });
 
-    // --- HELPERS ---
-    getEl('closeShareModal')?.addEventListener('click', () => getEl('shareModal').style.display = 'none');
-    function calculateDistance(lat1, lon1, lat2, lon2) { /* math ... */ }
-    function calculateBearing(lat1, lon1, lat2, lon2) { /* math ... */ }
-    function populateSavedSessions() { /* ... */ }
-});
+   // --- COMPLETED HELPERS ---
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371000;
+        const φ1 = lat1 * Math.PI/180, φ2 = lat2 * Math.PI/180;
+        const Δφ = (lat2-lat1) * Math.PI/180, Δλ = (lon2-lon1) * Math.PI/180;
+        const a = Math.sin(Δφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(Δλ/2)**2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    function calculateBearing(lat1, lon1, lat2, lon2) {
+        const y = Math.sin((lon2-lon1)*Math.PI/180) * Math.cos(lat2*Math.PI/180);
+        const x = Math.cos(lat1*Math.PI/180)*Math.sin(lat2*Math.PI/180) - Math.sin(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.cos((lon2-lon1)*Math.PI/180);
+        return (Math.atan2(y, x) * 180/Math.PI + 360) % 360;
+    }
+
+    function populateSavedSessions() {
+        const sel = getEl('savedSessions');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">-- Saved Sessions --</option>';
+        Object.keys(localStorage).filter(k => k.startsWith('Swellpath_')).forEach(k => {
+            let opt = document.createElement('option');
+            opt.value = k;
+            opt.textContent = k.replace('Swellpath_', ''); 
+            sel.appendChild(opt);
+        });
+    }
