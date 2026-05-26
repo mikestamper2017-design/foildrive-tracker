@@ -13,39 +13,33 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // --- FILE UPLOAD ---
-    const dropZone = getEl('dropZone');
-    const fileInput = getEl('fileInput');
-    
-    if (dropZone && fileInput) {
-        // Ensure click on dropZone triggers the hidden input
-        dropZone.addEventListener('click', (e) => {
-            fileInput.click();
-        });
+const dropZone = getEl('dropZone');
+const fileInput = getEl('fileInput');
 
-        // Handle file selection via input
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length) handleFileUpload(e.target.files[0]);
-        });
+// Drag and Drop (the only events that need listeners)
+dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.style.borderColor = 'var(--accent-color)';
+});
 
-        // Drag and Drop handlers
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.style.backgroundColor = 'rgba(255,255,255,0.05)';
-        });
+dropZone.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    dropZone.style.borderColor = 'var(--border-color)';
+});
 
-        dropZone.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            dropZone.style.backgroundColor = 'transparent';
-        });
-
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.style.backgroundColor = 'transparent';
-            if (e.dataTransfer.files.length) {
-                handleFileUpload(e.dataTransfer.files[0]);
-            }
-        });
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.style.borderColor = 'var(--border-color)';
+    if (e.dataTransfer.files.length) {
+        handleFileUpload(e.dataTransfer.files[0]);
     }
+});
+
+// Note: Because of the inline onclick="document.getElementById('fileInput').click()" 
+// added to the HTML, the click action is now handled natively.
+fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length) handleFileUpload(e.target.files[0]);
+});
 
     // --- CORE LOGIC ---
     function parseGPX(xmlString, fileName, gear) {
