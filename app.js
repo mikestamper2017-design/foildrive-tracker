@@ -188,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (getEl('dashboard')) getEl('dashboard').classList.remove('dashboard-hidden');
     }
 
-    // --- 7. CANVAS SHARE BADGE GENERATOR ---
+    // --- 7. SLEEK CANVAS SHARE BADGE GENERATOR ---
     const shareBtn = getEl('shareBtn');
     if (shareBtn) {
         shareBtn.addEventListener('click', function() {
@@ -197,47 +197,47 @@ document.addEventListener('DOMContentLoaded', function () {
             canvas.width = 1080; canvas.height = 1350;
             const ctx = canvas.getContext('2d');
             const data = state.currentData;
+            const loc = getEl('locationInput')?.value || "SESSION";
             
-            const totalDurationMin = Math.round((data.times[data.times.length - 1] - data.times[0]) / 60000);
-            const locationText = getEl('locationInput') ? getEl('locationInput').value : "";
+            // Background (Sleek Dark Mode)
+            ctx.fillStyle = '#0a0d14'; 
+            ctx.fillRect(0, 0, 1080, 1350);
 
-            ctx.fillStyle = '#001f3f'; ctx.fillRect(0, 0, 1080, 1350);
+            // Header
+            ctx.fillStyle = '#FFF'; ctx.font = 'bold 64px Helvetica, sans-serif';
+            ctx.fillText("FOIL SESSION", 80, 120);
+            ctx.fillStyle = '#888'; ctx.font = '32px Helvetica, sans-serif';
+            ctx.fillText(`${loc.toUpperCase()} • ${data.dateStr}`, 80, 180);
 
-            // Mapping
-            let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
-            state.fullTrack.forEach(pt => {
-                if (pt[0] < minLat) minLat = pt[0]; if (pt[0] > maxLat) maxLat = pt[0];
-                if (pt[1] < minLon) minLon = pt[1]; if (pt[1] > maxLon) maxLon = pt[1];
-            });
+            // Map (Simplified)
+            let minLat = Math.min(...data.lats), maxLat = Math.max(...data.lats);
+            let minLon = Math.min(...data.lons), maxLon = Math.max(...data.lons);
             const scale = Math.min(920 / (maxLon - minLon || 0.001), 400 / (maxLat - minLat || 0.001));
-            const xOffset = 80 + (920 - (maxLon - minLon) * scale) / 2;
-            const yOffset = 220 + (400 - (maxLat - minLat) * scale) / 2;
-            function sX(lon) { return xOffset + (lon - minLon) * scale; }
-            function sY(lat) { return (yOffset + 400) - (lat - minLat) * scale; }
+            const sX = (lon) => 80 + (lon - minLon) * scale;
+            const sY = (lat) => 650 - (lat - minLat) * scale;
 
-            // Paths
-            ctx.strokeStyle = '#7FDBFF'; ctx.lineWidth = 4;
-            ctx.beginPath(); state.fullTrack.forEach(pt => ctx.lineTo(sX(pt[1]), sY(pt[0]))); ctx.stroke();
-            if (state.longestTrack.length > 0) {
-                ctx.strokeStyle = '#D4AF37'; ctx.lineWidth = 8;
-                ctx.beginPath(); state.longestTrack.forEach((pt, i) => i === 0 ? ctx.moveTo(sX(pt[1]), sY(pt[0])) : ctx.lineTo(sX(pt[1]), sY(pt[0]))); ctx.stroke();
-            }
+            ctx.strokeStyle = '#222'; ctx.lineWidth = 3;
+            ctx.beginPath(); data.lats.forEach((lat, i) => i === 0 ? ctx.moveTo(sX(data.lons[i]), sY(lat)) : ctx.lineTo(sX(data.lons[i]), sY(lat)));
+            ctx.stroke();
 
-            // Text
-            ctx.fillStyle = '#FFF'; ctx.font = 'bold 56px sans-serif'; ctx.fillText(data.displayName, 80, 80);
-            ctx.fillStyle = '#7FDBFF'; ctx.font = '36px sans-serif'; ctx.fillText(`${locationText} • ${data.dateStr}`, 80, 150);
+            // Gold Highlight
+            ctx.strokeStyle = '#D4AF37'; ctx.lineWidth = 6;
+            ctx.beginPath();
+            state.longestTrack.forEach((pt, i) => i === 0 ? ctx.moveTo(sX(pt[1]), sY(pt[0])) : ctx.lineTo(sX(pt[1]), sY(pt[0])));
+            ctx.stroke();
 
-            function drawM(i, l, v, x, y) {
-                ctx.fillStyle = '#FFF'; ctx.font = '60px sans-serif'; ctx.fillText(i, x, y + 50);
-                ctx.fillStyle = '#AAA'; ctx.font = 'bold 24px sans-serif'; ctx.fillText(l, x + 80, y);
-                ctx.fillStyle = '#FFF'; ctx.font = 'bold 48px sans-serif'; ctx.fillText(v, x + 80, y + 60);
-            }
-            drawM('🦅', 'HERO RIDE', getEl('longestWave').textContent, 80, 700);
-            drawM('⚡', 'MAX SPEED', `${data.maxSpeed} km/h`, 580, 700);
-            drawM('⏱️', 'SESSION', `${totalDurationMin} min`, 80, 900);
-            drawM('🌊', 'WAVES', getEl('waveCount').textContent, 580, 900);
-            drawM('✈️', 'FLIGHT', `${data.flightTime} min`, 80, 1100);
-            drawM('🔋', 'MOTOR', `${data.motorTime} min`, 580, 1100);
+            // Stats Grid
+            const drawMetric = (label, val, x, y) => {
+                ctx.fillStyle = '#666'; ctx.font = 'bold 24px Helvetica, sans-serif'; ctx.fillText(label, x, y);
+                ctx.fillStyle = '#FFF'; ctx.font = 'bold 48px Helvetica, sans-serif'; ctx.fillText(val, x, y + 60);
+            };
+
+            drawMetric('HERO RIDE', getEl('longestWave')?.textContent || '0m', 80, 850);
+            drawMetric('MAX SPEED', `${data.maxSpeed} km/h`, 580, 850);
+            drawMetric('SESSION', `${Math.round((data.times[data.times.length - 1] - data.times[0]) / 60000)} min`, 80, 1050);
+            drawMetric('WAVES', getEl('waveCount')?.textContent || '0', 580, 1050);
+            drawMetric('FLIGHT', `${data.flightTime} min`, 80, 1250);
+            drawMetric('MOTOR', `${data.motorTime} min`, 580, 1250);
 
             const imgUrl = canvas.toDataURL('image/png');
             if (getEl('imageContainer')) getEl('imageContainer').innerHTML = `<img src="${imgUrl}" style="width:100%; border-radius:8px;"/>`;
@@ -245,15 +245,11 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    function calculateDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371e3, p = Math.PI/180;
-        const a = 0.5 - Math.cos((lat2-lat1)*p)/2 + Math.cos(lat1*p)*Math.cos(lat2*p)*(1-Math.cos((lon2-lon1)*p))/2;
-        return R * 2 * Math.asin(Math.sqrt(a));
+    // --- 8. FIX CLOSE MODAL ---
+    const closeBtn = getEl('closeShareModal'); // Ensure this ID matches your HTML button
+    const shareModal = getEl('shareModal');
+    if (closeBtn && shareModal) {
+        closeBtn.addEventListener('click', () => {
+            shareModal.style.display = 'none';
+        });
     }
-    function calculateBearing(lat1, lon1, lat2, lon2) {
-        const rad = Math.PI / 180;
-        const y = Math.sin((lon2 - lon1) * rad) * Math.cos(lat2 * rad);
-        const x = Math.cos(lat1 * rad) * Math.sin(lat2 * rad) - Math.sin(lat1 * rad) * Math.cos(lat2 * rad) * Math.cos((lon2 - lon1) * rad);
-        return (Math.atan2(y, x) / rad + 360) % 360;
-    }
-});
