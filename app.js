@@ -40,7 +40,25 @@ dropZone.addEventListener('drop', (e) => {
 fileInput.addEventListener('change', (e) => {
     if (e.target.files.length) handleFileUpload(e.target.files[0]);
 });
-
+function handleFileUpload(file) {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        // Collect current gear info from inputs
+        const gear = {
+            location: getEl('locationInput')?.value || "Unknown",
+            drive: getEl('gearFoilDrive')?.value || "N/A",
+            foil: getEl('gearFoil')?.value || "N/A",
+            wing: getEl('gearWing')?.value || "N/A"
+        };
+        
+        const key = parseGPX(ev.target.result, file.name, gear);
+        if (key) {
+            populateSavedSessions();
+            loadSession(key);
+        }
+    };
+    reader.readAsText(file);
+}
     // --- CORE LOGIC ---
     function parseGPX(xmlString, fileName, gear) {
         const parser = new DOMParser();
