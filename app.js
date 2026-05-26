@@ -8,27 +8,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- INITIALIZATION ---
     populateSavedSessions();
-    
     getEl('loadSessionBtn')?.addEventListener('click', () => {
         const key = getEl('savedSessions').value;
         if (key) loadSession(key);
     });
 
-    getEl('toggleWaveOnly')?.addEventListener('change', () => {
-        if (state.currentData) renderMap();
-    });
+    getEl('toggleWaveOnly')?.addEventListener('change', () => { if (state.currentData) renderMap(); });
 
     getEl('lockHeadingBtn')?.addEventListener('click', () => {
         if (state.fullTrack.length > 1) {
-            state.lockedHeading = calculateBearing(
-                state.fullTrack[0][0], state.fullTrack[0][1], 
-                state.fullTrack[1][0], state.fullTrack[1][1]
-            );
-            alert("Heading locked at " + Math.round(state.lockedHeading) + "°");
-            if (state.currentData) {
-                calculateTracks(state.currentData);
-                renderMap();
-            }
+            state.lockedHeading = calculateBearing(state.fullTrack[0][0], state.fullTrack[0][1], state.fullTrack[1][0], state.fullTrack[1][1]);
+            getEl('lockHeadingBtn').textContent = `Heading Locked: ${Math.round(state.lockedHeading)}°`;
+            if (state.currentData) { calculateTracks(state.currentData); renderMap(); }
         }
     });
 
@@ -38,29 +29,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--accent-color)'; });
     dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--border-color)'; });
-    dropZone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        dropZone.style.borderColor = 'var(--border-color)';
-        if (e.dataTransfer.files.length) handleFileUpload(e.dataTransfer.files[0]);
-    });
-    fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length) handleFileUpload(e.target.files[0]);
-    });
+    dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--border-color)'; if (e.dataTransfer.files.length) handleFileUpload(e.dataTransfer.files[0]); });
+    fileInput.addEventListener('change', (e) => { if (e.target.files.length) handleFileUpload(e.target.files[0]); });
 
     function handleFileUpload(file) {
         const reader = new FileReader();
         reader.onload = (ev) => {
             const gear = {
-                location: getEl('locationInput')?.value || "Unknown",
-                drive: getEl('gearFoilDrive')?.value || "N/A",
-                foil: getEl('gearFoil')?.value || "N/A",
-                wing: getEl('gearWing')?.value || "N/A"
+                location: getEl('locationInput')?.value || "",
+                drive: getEl('gearFoilDrive')?.value || "",
+                foil: getEl('gearFoil')?.value || "",
+                wing: getEl('gearWing')?.value || ""
             };
             const key = parseGPX(ev.target.result, file.name, gear);
-            if (key) {
-                populateSavedSessions();
-                loadSession(key);
-            }
+            if (key) { populateSavedSessions(); loadSession(key); }
         };
         reader.readAsText(file);
     }
@@ -186,20 +168,31 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.width = 1080; canvas.height = 1350;
         const ctx = canvas.getContext('2d');
         const data = state.currentData;
+        
+        // Background & Map-Snap
         ctx.fillStyle = '#0a0d14'; ctx.fillRect(0, 0, 1080, 1350);
+        ctx.strokeStyle = '#222'; ctx.lineWidth = 2;
+        // Simple "Map-Snap" style grid
+        for(let i=0; i<1080; i+=100) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,1350); ctx.stroke(); }
+        for(let i=0; i<1350; i+=100) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(1080,i); ctx.stroke(); }
+
         ctx.fillStyle = '#FFF'; ctx.font = 'bold 64px Helvetica'; ctx.fillText("FOIL SESSION", 80, 120);
         ctx.fillStyle = '#888'; ctx.font = '32px Helvetica'; ctx.fillText(`${data.gear.location.toUpperCase()} • ${data.dateStr}`, 80, 180);
+
         const drawMetric = (label, val, x, y) => {
             ctx.fillStyle = '#666'; ctx.font = 'bold 24px Helvetica'; ctx.fillText(label, x, y);
-            ctx.fillStyle = '#FFF'; ctx.font = 'bold 48px Helvetica'; ctx.fillText(val, x, y + 60);
+            ctx.fillStyle = '#FFF'; ctx.font = (val.length > 30) ? 'bold 32px Helvetica' : 'bold 48px Helvetica';
+            ctx.fillText(val, x, y + 60);
         };
-        drawMetric('HERO RIDE', getEl('longestWave').textContent, 80, 850);
-        drawMetric('FASTEST', getEl('fastestWave').textContent, 580, 850);
-        drawMetric('FOIL / DRIVE', `${data.gear.foil} / ${data.gear.drive}`, 80, 1050);
-        drawMetric('WING', data.gear.wing, 580, 1050);
-        drawMetric('WAVES', getEl('waveCount').textContent, 80, 1250);
-        drawMetric('FLIGHT', `${data.flightTime} min`, 580, 1250);
-        getEl('imageContainer').innerHTML = `<img src="${canvas.toDataURL('image/png')}" style="width:100%"/>`;
+
+        drawMetric('HERO RIDE', getEl('longestWave').textContent, 80, 350);
+        drawMetric('FASTEST', getEl('fastestWave').textContent, 580, 350);
+        drawMetric('FOIL / DRIVE', `${data.gear.foil} / ${data.gear.drive}`, 80, 600);
+        drawMetric('WING', data.gear.wing, 80, 850);
+        drawMetric('WAVES', getEl('waveCount').textContent, 80, 1100);
+        drawMetric('FLIGHT', `${data.flightTime} min`, 580, 1100);
+
+        getEl('imageContainer').innerHTML = `<img src="${canvas.toDataURL('image/png')}" style="width:100%; border-radius: 12px;"/>`;
         getEl('shareModal').style.display = 'flex';
     });
 
