@@ -1,8 +1,9 @@
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', () => {
     let state = {
         map: null, fullTrack: [], waveTracks: [], longestTrack: [], 
         fastestTrack: {speed: 0}, currentData: null, lockedHeading: null
     };
+
     function getEl(id) { return document.getElementById(id); }
 
     // --- INITIALIZATION ---
@@ -13,52 +14,38 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // --- FILE UPLOAD ---
-const dropZone = getEl('dropZone');
-const fileInput = getEl('fileInput');
+    const dropZone = getEl('dropZone');
+    const fileInput = getEl('fileInput');
 
-// Drag and Drop (the only events that need listeners)
-dropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    dropZone.style.borderColor = 'var(--accent-color)';
-});
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--accent-color)'; });
+    dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--border-color)'; });
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = 'var(--border-color)';
+        if (e.dataTransfer.files.length) handleFileUpload(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length) handleFileUpload(e.target.files[0]);
+    });
 
-dropZone.addEventListener('dragleave', (e) => {
-    e.preventDefault();
-    dropZone.style.borderColor = 'var(--border-color)';
-});
-
-dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropZone.style.borderColor = 'var(--border-color)';
-    if (e.dataTransfer.files.length) {
-        handleFileUpload(e.dataTransfer.files[0]);
-    }
-});
-
-// Note: Because of the inline onclick="document.getElementById('fileInput').click()" 
-// added to the HTML, the click action is now handled natively.
-fileInput.addEventListener('change', (e) => {
-    if (e.target.files.length) handleFileUpload(e.target.files[0]);
-});
-function handleFileUpload(file) {
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-        // Collect current gear info from inputs
-        const gear = {
-            location: getEl('locationInput')?.value || "Unknown",
-            drive: getEl('gearFoilDrive')?.value || "N/A",
-            foil: getEl('gearFoil')?.value || "N/A",
-            wing: getEl('gearWing')?.value || "N/A"
+    function handleFileUpload(file) {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const gear = {
+                location: getEl('locationInput')?.value || "Unknown",
+                drive: getEl('gearFoilDrive')?.value || "N/A",
+                foil: getEl('gearFoil')?.value || "N/A",
+                wing: getEl('gearWing')?.value || "N/A"
+            };
+            const key = parseGPX(ev.target.result, file.name, gear);
+            if (key) {
+                populateSavedSessions();
+                loadSession(key);
+            }
         };
-        
-        const key = parseGPX(ev.target.result, file.name, gear);
-        if (key) {
-            populateSavedSessions();
-            loadSession(key);
-        }
-    };
-    reader.readAsText(file);
-}
+        reader.readAsText(file);
+    }
+
     // --- CORE LOGIC ---
     function parseGPX(xmlString, fileName, gear) {
         const parser = new DOMParser();
@@ -136,7 +123,24 @@ function handleFileUpload(file) {
         getEl('totalDistance').textContent = `${(totalD / 1000).toFixed(2)} km`;
     }
 
-    // --- UI & MAP ---
+    function loadSession(key) {
+        const data = JSON.parse(localStorage.getItem(key));
+        if(!data) return;
+        state.currentData = data;
+        getEl('flightTime').textContent = `${data.flightTime} min`;
+        getEl('motorTime').textContent = `${data.motorTime} min`;
+        getEl('maxSpeed').textContent = `${data.maxSpeed} km/h`;
+        getEl('locationInput').value = data.gear.location;
+        getEl('gearFoilDrive').value = data.gear.drive;
+        getEl('gearFoil').value = data.gear.foil;
+        getEl('gearWing').value = data.gear.wing;
+        calculateTracks(data);
+        renderMap();
+        const d = getEl('dashboard');
+        d.classList.remove('dashboard-hidden');
+        d.style.display = 'grid';
+    }
+
     function renderMap() {
         if (!state.fullTrack.length) return;
         if (state.map) state.map.remove();
@@ -147,32 +151,6 @@ function handleFileUpload(file) {
         state.map.fitBounds(L.latLngBounds(state.fullTrack));
     }
 
-    function loadSession(key) {
-        const data = JSON.parse(localStorage.getItem(key));
-        if(!data) return;
-        
-        state.currentData = data;
-        
-        // Update UI
-        getEl('flightTime').textContent = `${data.flightTime} min`;
-        getEl('motorTime').textContent = `${data.motorTime} min`;
-        getEl('maxSpeed').textContent = `${data.maxSpeed} km/h`;
-        getEl('locationInput').value = data.gear.location;
-        getEl('gearFoilDrive').value = data.gear.drive;
-        getEl('gearFoil').value = data.gear.foil;
-        getEl('gearWing').value = data.gear.wing;
-        
-        calculateTracks(data);
-        renderMap();
-        
-        // Ensure dashboard is visible
-        const dash = getEl('dashboard');
-        if (dash) {
-            dash.classList.remove('dashboard-hidden');
-            dash.style.display = 'grid'; // Force grid display
-        }
-    }
-
     // --- BADGE ---
     getEl('shareBtn')?.addEventListener('click', function() {
         if (!state.currentData) return;
@@ -180,28 +158,23 @@ function handleFileUpload(file) {
         canvas.width = 1080; canvas.height = 1350;
         const ctx = canvas.getContext('2d');
         const data = state.currentData;
-        
         ctx.fillStyle = '#0a0d14'; ctx.fillRect(0, 0, 1080, 1350);
         ctx.fillStyle = '#FFF'; ctx.font = 'bold 64px Helvetica'; ctx.fillText("FOIL SESSION", 80, 120);
         ctx.fillStyle = '#888'; ctx.font = '32px Helvetica'; ctx.fillText(`${data.gear.location.toUpperCase()} • ${data.dateStr}`, 80, 180);
-
         const drawMetric = (label, val, x, y) => {
             ctx.fillStyle = '#666'; ctx.font = 'bold 24px Helvetica'; ctx.fillText(label, x, y);
             ctx.fillStyle = '#FFF'; ctx.font = 'bold 48px Helvetica'; ctx.fillText(val, x, y + 60);
         };
-
         drawMetric('HERO RIDE', getEl('longestWave').textContent, 80, 850);
         drawMetric('FASTEST', getEl('fastestWave').textContent, 580, 850);
         drawMetric('FOIL / DRIVE', `${data.gear.foil} / ${data.gear.drive}`, 80, 1050);
         drawMetric('WING', data.gear.wing, 580, 1050);
         drawMetric('WAVES', getEl('waveCount').textContent, 80, 1250);
         drawMetric('FLIGHT', `${data.flightTime} min`, 580, 1250);
-
         getEl('imageContainer').innerHTML = `<img src="${canvas.toDataURL('image/png')}" style="width:100%"/>`;
         getEl('shareModal').style.display = 'flex';
     });
 
-   // --- COMPLETED HELPERS ---
     function calculateDistance(lat1, lon1, lat2, lon2) {
         const R = 6371000;
         const φ1 = lat1 * Math.PI/180, φ2 = lat2 * Math.PI/180;
@@ -227,3 +200,4 @@ function handleFileUpload(file) {
             sel.appendChild(opt);
         });
     }
+});
