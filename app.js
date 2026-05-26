@@ -130,18 +130,12 @@ fileInput.addEventListener('change', (e) => {
     }
 
     function loadSession(key) {
-    const data = JSON.parse(localStorage.getItem(key));
-    if(!data) return;
-    
-    // ADD THIS LINE
-    getEl('dashboard').classList.remove('dashboard-hidden'); 
-    
-    state.currentData = data;
-    // ... rest of your code
-}
         const data = JSON.parse(localStorage.getItem(key));
         if(!data) return;
+        
         state.currentData = data;
+        
+        // Update UI
         getEl('flightTime').textContent = `${data.flightTime} min`;
         getEl('motorTime').textContent = `${data.motorTime} min`;
         getEl('maxSpeed').textContent = `${data.maxSpeed} km/h`;
@@ -149,9 +143,16 @@ fileInput.addEventListener('change', (e) => {
         getEl('gearFoilDrive').value = data.gear.drive;
         getEl('gearFoil').value = data.gear.foil;
         getEl('gearWing').value = data.gear.wing;
+        
         calculateTracks(data);
         renderMap();
-        getEl('dashboard').classList.remove('dashboard-hidden');
+        
+        // Ensure dashboard is visible
+        const dash = getEl('dashboard');
+        if (dash) {
+            dash.classList.remove('dashboard-hidden');
+            dash.style.display = 'grid'; // Force grid display
+        }
     }
 
     // --- BADGE ---
