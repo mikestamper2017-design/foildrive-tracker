@@ -8,9 +8,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- INITIALIZATION ---
     populateSavedSessions();
+    
     getEl('loadSessionBtn')?.addEventListener('click', () => {
         const key = getEl('savedSessions').value;
         if (key) loadSession(key);
+    });
+
+    getEl('toggleWaveOnly')?.addEventListener('change', () => {
+        if (state.currentData) renderMap();
+    });
+
+    getEl('lockHeadingBtn')?.addEventListener('click', () => {
+        if (state.fullTrack.length > 1) {
+            state.lockedHeading = calculateBearing(
+                state.fullTrack[0][0], state.fullTrack[0][1], 
+                state.fullTrack[1][0], state.fullTrack[1][1]
+            );
+            alert("Heading locked at " + Math.round(state.lockedHeading) + "°");
+            if (state.currentData) {
+                calculateTracks(state.currentData);
+                renderMap();
+            }
+        }
     });
 
     // --- FILE UPLOAD ---
@@ -146,14 +165,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.map) state.map.remove();
         state.map = L.map('mapContainer').setView(state.fullTrack[0], 14);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
-        L.polyline((getEl('toggleWaveOnly')?.checked) ? state.waveTracks : state.fullTrack, {color: '#A0A0A0', weight: 2}).addTo(state.map);
+        const showOnlyWaves = getEl('toggleWaveOnly')?.checked;
+        L.polyline(showOnlyWaves ? state.waveTracks : state.fullTrack, {color: '#A0A0A0', weight: 2}).addTo(state.map);
         if (state.longestTrack.length > 0) L.polyline(state.longestTrack, {color: '#D4AF37', weight: 6}).addTo(state.map);
         state.map.fitBounds(L.latLngBounds(state.fullTrack));
     }
 
     // --- BADGE ---
+    getEl('closeShareModal')?.addEventListener('click', () => { getEl('shareModal').style.display = 'none'; });
+
     getEl('shareBtn')?.addEventListener('click', function() {
         if (!state.currentData) return;
+        state.currentData.gear = {
+            location: getEl('locationInput').value,
+            drive: getEl('gearFoilDrive').value,
+            foil: getEl('gearFoil').value,
+            wing: getEl('gearWing').value
+        };
         const canvas = document.createElement('canvas');
         canvas.width = 1080; canvas.height = 1350;
         const ctx = canvas.getContext('2d');
