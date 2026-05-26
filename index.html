@@ -35,7 +35,7 @@
             <div class="instructions-grid">
                 <div class="instructions-step">
                     <strong>1. Export from Strava</strong>
-                    <span>Open your surf activity on Strava (web or mobile), click the three dots, and select "Export GPX".</span>
+                    <span>Open your surf activity on Strava, click the three dots, and select "Export GPX".</span>
                 </div>
                 <div class="instructions-step">
                     <strong>2. Save to your device</strong>
@@ -65,46 +65,29 @@
         </div>
 
         <div id="dashboard" class="dashboard dashboard-hidden">
-            <div class="metric-card">
-                <span class="label">Flight Time</span>
-                <span id="flightTime" class="value">-</span>
-            </div>
-            <div class="metric-card">
-                <span class="label">Motor Assist</span>
-                <span id="motorTime" class="value">-</span>
-            </div>
-            <div class="metric-card">
-                <span class="label">Max Speed</span>
-                <span id="maxSpeed" class="value">-</span>
-            </div>
-            <div class="metric-card">
-                <span class="label">Wave Count</span>
-                <span id="waveCount" class="value">-</span>
-            </div>
-            <div class="metric-card longest-wave-card">
-                <span class="label">Longest Wave</span>
-                <span id="longestWave" class="value">-</span>
-            </div>
-            <div class="metric-card fastest-wave-card">
-                <span class="label">Fastest Wave</span>
-                <span id="fastestWave" class="value">-</span>
-            </div>
-            <div class="metric-card">
-                <span class="label">Total Distance</span>
-                <span id="totalDistance" class="value">-</span>
-            </div>
+            <div class="metric-card"><span class="label">Flight Time</span><span id="flightTime" class="value">-</span></div>
+            <div class="metric-card"><span class="label">Motor Assist</span><span id="motorTime" class="value">-</span></div>
+            <div class="metric-card"><span class="label">Max Speed</span><span id="maxSpeed" class="value">-</span></div>
+            <div class="metric-card"><span class="label">Wave Count</span><span id="waveCount" class="value">-</span></div>
+            <div class="metric-card longest-wave-card"><span class="label">Longest Wave</span><span id="longestWave" class="value">-</span></div>
+            <div class="metric-card fastest-wave-card"><span class="label">Fastest Wave</span><span id="fastestWave" class="value">-</span></div>
+            <div class="metric-card"><span class="label">Total Distance</span><span id="totalDistance" class="value">-</span></div>
         </div>
 
         <div class="gear-panel">
-            <h4>Session Setup Story <span class="optional-tag">(Optional)</span></h4>
+            <h4>Session Details</h4>
             <div class="gear-form-grid">
+                <div class="gear-input-group">
+                    <label for="locationInput">Session Location</label>
+                    <input type="text" id="locationInput" placeholder="e.g., Uxbridge, ON">
+                </div>
                 <div class="gear-input-group">
                     <label for="gearFoilDrive">Drive / Battery</label>
                     <input type="text" id="gearFoilDrive" placeholder="e.g., Foil Drive Assist Max">
                 </div>
                 <div class="gear-input-group">
                     <label for="gearFoil">Foil Setup</label>
-                    <input type="text" id="gearFoil" placeholder="e.g., NP Glide Surf / Cedrus Mast">
+                    <input type="text" id="gearFoil" placeholder="e.g., NP Glide Surf">
                 </div>
                 <div class="gear-input-group">
                     <label for="gearWing">Wing / Paddle</label>
@@ -130,11 +113,11 @@
     </main>
 
     <div id="shareModal" class="share-modal-overlay">
-        <div class="share-modal-card insta-card-wrapper">
+        <div class="share-modal-card">
             <h3>Your Instagram Session Badge</h3>
-            <p>Long-press or right-click the image below to save directly to your photos.</p>
+            <p>Long-press or right-click the image below to save.</p>
             <div id="imageContainer" style="margin-bottom: 20px;"></div>
-            <button id="closeShareBtn">Close</button>
+            <button id="closeShareModal" class="action-btn">Close</button>
         </div>
     </div>
 
