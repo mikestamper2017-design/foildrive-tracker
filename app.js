@@ -169,28 +169,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const ctx = canvas.getContext('2d');
         const data = state.currentData;
         
-        // Background & Map-Snap
         ctx.fillStyle = '#0a0d14'; ctx.fillRect(0, 0, 1080, 1350);
-        ctx.strokeStyle = '#222'; ctx.lineWidth = 2;
-        // Simple "Map-Snap" style grid
-        for(let i=0; i<1080; i+=100) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,1350); ctx.stroke(); }
-        for(let i=0; i<1350; i+=100) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(1080,i); ctx.stroke(); }
 
-        ctx.fillStyle = '#FFF'; ctx.font = 'bold 64px Helvetica'; ctx.fillText("FOIL SESSION", 80, 120);
-        ctx.fillStyle = '#888'; ctx.font = '32px Helvetica'; ctx.fillText(`${data.gear.location.toUpperCase()} • ${data.dateStr}`, 80, 180);
+        ctx.fillStyle = '#FFF'; ctx.font = 'bold 72px Helvetica'; ctx.fillText("FOIL SESSION", 80, 120);
+        ctx.fillStyle = '#888'; ctx.font = '36px Helvetica'; ctx.fillText(`${data.gear.location.toUpperCase()} • ${data.dateStr}`, 80, 180);
 
-        const drawMetric = (label, val, x, y) => {
-            ctx.fillStyle = '#666'; ctx.font = 'bold 24px Helvetica'; ctx.fillText(label, x, y);
-            ctx.fillStyle = '#FFF'; ctx.font = (val.length > 30) ? 'bold 32px Helvetica' : 'bold 48px Helvetica';
+        const drawMetric = (label, val, x, y, isLong = false) => {
+            ctx.fillStyle = '#666'; ctx.font = 'bold 28px Helvetica'; ctx.fillText(label, x, y);
+            ctx.fillStyle = '#FFF'; ctx.font = isLong ? 'bold 36px Helvetica' : 'bold 54px Helvetica';
             ctx.fillText(val, x, y + 60);
         };
 
+        // Layout rows with adjusted Y-spacing to prevent overlap
         drawMetric('HERO RIDE', getEl('longestWave').textContent, 80, 350);
-        drawMetric('FASTEST', getEl('fastestWave').textContent, 580, 350);
-        drawMetric('FOIL / DRIVE', `${data.gear.foil} / ${data.gear.drive}`, 80, 600);
-        drawMetric('WING', data.gear.wing, 80, 850);
-        drawMetric('WAVES', getEl('waveCount').textContent, 80, 1100);
-        drawMetric('FLIGHT', `${data.flightTime} min`, 580, 1100);
+        drawMetric('FASTEST', getEl('fastestWave').textContent, 550, 350);
+        
+        drawMetric('FOIL / DRIVE', `${data.gear.foil} / ${data.gear.drive}`, 80, 550, true);
+        drawMetric('WING', data.gear.wing, 80, 750, true);
+        
+        drawMetric('WAVES', getEl('waveCount').textContent, 80, 950);
+        drawMetric('FLIGHT', `${data.flightTime} min`, 550, 950);
 
         getEl('imageContainer').innerHTML = `<img src="${canvas.toDataURL('image/png')}" style="width:100%; border-radius: 12px;"/>`;
         getEl('shareModal').style.display = 'flex';
