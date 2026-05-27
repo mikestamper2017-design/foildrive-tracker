@@ -164,8 +164,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const ctx = canvas.getContext('2d');
         const data = state.currentData;
         
+        // 1. Background
         ctx.fillStyle = '#0a0d14'; ctx.fillRect(0, 0, 1080, 1350);
         
+        // 2. Header & Location (Top)
+        ctx.fillStyle = '#FFF'; ctx.font = 'bold 72px Helvetica'; ctx.fillText("FOIL SESSION", 80, 120);
+        ctx.fillStyle = '#888'; ctx.font = '36px Helvetica'; 
+        // Pulls location directly from data.gear
+        ctx.fillText(`${data.gear.location.toUpperCase() || 'UNKNOWN'} • ${data.dateStr}`, 80, 180);
+
+        // 3. Map Route (Middle - Y constrained to 250-550)
         const minLat = Math.min(...data.lats), maxLat = Math.max(...data.lats);
         const minLon = Math.min(...data.lons), maxLon = Math.max(...data.lons);
         
@@ -173,7 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.beginPath();
         data.lats.forEach((lat, i) => {
             const x = ((data.lons[i] - minLon) / (maxLon - minLon || 1)) * 800 + 140;
-            const y = 450 - ((lat - minLat) / (maxLat - minLat || 1)) * 300;
+            const y = 400 - ((lat - minLat) / (maxLat - minLat || 1)) * 250;
             i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
         });
         ctx.stroke();
@@ -183,31 +191,34 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.beginPath();
             state.longestTrack.forEach((coord, i) => {
                 const x = ((coord[1] - minLon) / (maxLon - minLon || 1)) * 800 + 140;
-                const y = 450 - ((coord[0] - minLat) / (maxLat - minLat || 1)) * 300;
+                const y = 400 - ((coord[0] - minLat) / (maxLat - minLat || 1)) * 250;
                 i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
             });
             ctx.stroke();
         }
 
-        ctx.fillStyle = '#FFF'; ctx.font = 'bold 72px Helvetica'; ctx.fillText("FOIL SESSION", 80, 120);
-        ctx.fillStyle = '#888'; ctx.font = '36px Helvetica'; ctx.fillText(`${data.gear.location.toUpperCase()} • ${data.dateStr}`, 80, 180);
-
+        // 4. Main Stats (Shifted down to start below map)
         const drawBig = (label, val, x, y) => {
-            ctx.fillStyle = '#666'; ctx.font = 'bold 28px Helvetica'; ctx.fillText(label, x, y);
-            ctx.fillStyle = '#FFF'; ctx.font = 'bold 54px Helvetica'; ctx.fillText(val, x, y + 60);
+            ctx.fillStyle = '#666'; ctx.font = 'bold 24px Helvetica'; ctx.fillText(label, x, y);
+            ctx.fillStyle = '#FFF'; ctx.font = 'bold 48px Helvetica'; ctx.fillText(val, x, y + 50);
         };
         
-        drawBig('HERO RIDE', getEl('longestWave').textContent, 80, 350);
-        drawBig('FASTEST', getEl('fastestWave').textContent, 550, 350);
-        drawBig('MAX SPEED', getEl('maxSpeed').textContent, 80, 550);
-        drawBig('TOTAL DIST', getEl('totalDistance').textContent, 550, 550);
-        drawBig('WAVES', getEl('waveCount').textContent, 80, 750);
-        drawBig('FLIGHT', `${data.flightTime} min`, 550, 750);
+        drawBig('HERO RIDE', getEl('longestWave').textContent, 80, 550);
+        drawBig('FASTEST', getEl('fastestWave').textContent, 550, 550);
+        drawBig('MAX SPEED', getEl('maxSpeed').textContent, 80, 700);
+        drawBig('TOTAL DIST', getEl('totalDistance').textContent, 550, 700);
+        drawBig('WAVES', getEl('waveCount').textContent, 80, 850);
+        drawBig('FLIGHT', `${data.flightTime} min`, 550, 850);
 
-        ctx.fillStyle = '#444'; ctx.fillRect(0, 1000, 1080, 350);
-        ctx.fillStyle = '#FFF'; ctx.font = '32px Helvetica';
-        ctx.fillText(`DRIVE: ${data.gear.drive}  |  FOIL: ${data.gear.foil}  |  WING: ${data.gear.wing}`, 80, 1080);
+        // 5. Gear Details (Bottom Strip)
+        ctx.fillStyle = '#222'; ctx.fillRect(0, 1000, 1080, 350);
+        ctx.fillStyle = '#D4AF37'; ctx.font = 'bold 28px Helvetica'; ctx.fillText("SETUP", 80, 1060);
+        ctx.fillStyle = '#FFF'; ctx.font = '36px Helvetica';
+        ctx.fillText(`DRIVE: ${data.gear.drive || '-'}`, 80, 1120);
+        ctx.fillText(`FOIL: ${data.gear.foil || '-'}`, 80, 1180);
+        ctx.fillText(`WING: ${data.gear.wing || '-'}`, 80, 1240);
 
+        // Update Modal
         const imageContainer = getEl('imageContainer');
         imageContainer.innerHTML = '';
         const img = new Image();
