@@ -155,7 +155,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- BADGE ---
-    // --- BADGE ---
     getEl('closeShareModal')?.addEventListener('click', () => { getEl('shareModal').style.display = 'none'; });
 
     getEl('shareBtn')?.addEventListener('click', function() {
