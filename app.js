@@ -122,6 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
         getEl('longestWave').textContent = `${Math.round(longestM)} m`;
         getEl('fastestWave').textContent = `${state.fastestTrack.speed.toFixed(1)} km/h`;
         getEl('totalDistance').textContent = `${(totalD / 1000).toFixed(2)} km`;
+        getEl('maxSpeed').textContent = `${data.maxSpeed} km/h`;
     }
 
     function loadSession(key) {
@@ -158,7 +159,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     getEl('shareBtn')?.addEventListener('click', function() {
         if (!state.currentData) return;
-        
         const canvas = document.createElement('canvas');
         canvas.width = 1080; canvas.height = 1350;
         const ctx = canvas.getContext('2d');
@@ -166,14 +166,14 @@ document.addEventListener('DOMContentLoaded', () => {
         
         ctx.fillStyle = '#0a0d14'; ctx.fillRect(0, 0, 1080, 1350);
         
-        // Track Path
-        ctx.strokeStyle = '#D4AF37'; ctx.lineWidth = 6;
+        // Watermark Route
+        ctx.strokeStyle = '#222'; ctx.lineWidth = 12;
         ctx.beginPath();
         const minLat = Math.min(...data.lats), maxLat = Math.max(...data.lats);
         const minLon = Math.min(...data.lons), maxLon = Math.max(...data.lons);
         data.lats.forEach((lat, i) => {
             const x = ((data.lons[i] - minLon) / (maxLon - minLon || 1)) * 800 + 140;
-            const y = 400 - ((lat - minLat) / (maxLat - minLat || 1)) * 300;
+            const y = 600 - ((lat - minLat) / (maxLat - minLat || 1)) * 300;
             i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
         });
         ctx.stroke();
@@ -183,26 +183,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const drawMetric = (label, val, x, y, isWide = false) => {
             ctx.fillStyle = '#666'; ctx.font = 'bold 28px Helvetica'; ctx.fillText(label, x, y);
-            ctx.fillStyle = '#FFF'; ctx.font = isWide ? 'bold 36px Helvetica' : 'bold 54px Helvetica';
+            ctx.fillStyle = '#FFF'; ctx.font = 'bold 54px Helvetica';
             ctx.fillText(val, x, y + 60);
         };
 
-        drawMetric('HERO RIDE', getEl('longestWave').textContent, 80, 650);
-        drawMetric('FASTEST', getEl('fastestWave').textContent, 550, 650);
-        drawMetric('FOIL / DRIVE', `${data.gear.foil} / ${data.gear.drive}`, 80, 850, true);
-        drawMetric('WING', data.gear.wing, 80, 1000, true);
+        drawMetric('HERO RIDE', getEl('longestWave').textContent, 80, 350);
+        drawMetric('FASTEST', getEl('fastestWave').textContent, 550, 350);
+        drawMetric('MAX SPEED', getEl('maxSpeed').textContent, 80, 550);
+        drawMetric('TOTAL DIST', getEl('totalDistance').textContent, 550, 550);
+        drawMetric('FOIL / DRIVE', `${data.gear.foil} / ${data.gear.drive}`, 80, 750);
+        drawMetric('WING', data.gear.wing, 80, 950);
         drawMetric('WAVES', getEl('waveCount').textContent, 80, 1150);
         drawMetric('FLIGHT', `${data.flightTime} min`, 550, 1150);
 
-        // Crucial: Set image source to canvas data URL
         const imageContainer = getEl('imageContainer');
         imageContainer.innerHTML = '';
         const img = new Image();
         img.src = canvas.toDataURL('image/png');
-        img.style.width = '100%';
-        img.style.borderRadius = '12px';
+        img.style.width = '100%'; img.style.borderRadius = '12px';
         imageContainer.appendChild(img);
-        
         getEl('shareModal').style.display = 'flex';
     });
 
