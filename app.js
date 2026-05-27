@@ -155,6 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- BADGE ---
+    // --- BADGE ---
     getEl('closeShareModal')?.addEventListener('click', () => { getEl('shareModal').style.display = 'none'; });
 
     getEl('shareBtn')?.addEventListener('click', function() {
@@ -167,13 +168,14 @@ document.addEventListener('DOMContentLoaded', () => {
         // 1. Background
         ctx.fillStyle = '#0a0d14'; ctx.fillRect(0, 0, 1080, 1350);
         
-        // 2. Header & Location (Top)
+        // 2. Header (Absolute top)
         ctx.fillStyle = '#FFF'; ctx.font = 'bold 72px Helvetica'; ctx.fillText("FOIL SESSION", 80, 120);
         ctx.fillStyle = '#888'; ctx.font = '36px Helvetica'; 
-        // Pulls location directly from data.gear
-        ctx.fillText(`${data.gear.location.toUpperCase() || 'UNKNOWN'} • ${data.dateStr}`, 80, 180);
+        // Directly access inputs to ensure we get the latest text
+        const loc = getEl('locationInput')?.value || 'UNKNOWN';
+        ctx.fillText(`${loc.toUpperCase()} • ${data.dateStr}`, 80, 180);
 
-        // 3. Map Route (Middle - Y constrained to 250-550)
+        // 3. Map Route (Fixed Y-range: 250 to 500)
         const minLat = Math.min(...data.lats), maxLat = Math.max(...data.lats);
         const minLon = Math.min(...data.lons), maxLon = Math.max(...data.lons);
         
@@ -181,9 +183,52 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.beginPath();
         data.lats.forEach((lat, i) => {
             const x = ((data.lons[i] - minLon) / (maxLon - minLon || 1)) * 800 + 140;
-            const y = 400 - ((lat - minLat) / (maxLat - minLat || 1)) * 250;
+            const y = 480 - ((lat - minLat) / (maxLat - minLat || 1)) * 200;
             i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
         });
+        ctx.stroke();
+
+        if (state.longestTrack.length > 0) {
+            ctx.strokeStyle = '#D4AF37'; ctx.lineWidth = 8;
+            ctx.beginPath();
+            state.longestTrack.forEach((coord, i) => {
+                const x = ((coord[1] - minLon) / (maxLon - minLon || 1)) * 800 + 140;
+                const y = 480 - ((coord[0] - minLat) / (maxLat - minLat || 1)) * 200;
+                i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+        }
+
+        // 4. Main Stats (Shifted down to start at 600)
+        const drawBig = (label, val, x, y) => {
+            ctx.fillStyle = '#666'; ctx.font = 'bold 24px Helvetica'; ctx.fillText(label, x, y);
+            ctx.fillStyle = '#FFF'; ctx.font = 'bold 48px Helvetica'; ctx.fillText(val, x, y + 50);
+        };
+        
+        drawBig('HERO RIDE', getEl('longestWave').textContent, 80, 600);
+        drawBig('FASTEST', getEl('fastestWave').textContent, 550, 600);
+        drawBig('MAX SPEED', getEl('maxSpeed').textContent, 80, 750);
+        drawBig('TOTAL DIST', getEl('totalDistance').textContent, 550, 750);
+        drawBig('WAVES', getEl('waveCount').textContent, 80, 900);
+        drawBig('FLIGHT', `${data.flightTime} min`, 550, 900);
+
+        // 5. Gear Details (Bottom Strip - explicitly grabbing fresh values)
+        ctx.fillStyle = '#222'; ctx.fillRect(0, 1050, 1080, 300);
+        ctx.fillStyle = '#D4AF37'; ctx.font = 'bold 28px Helvetica'; ctx.fillText("SETUP", 80, 1110);
+        ctx.fillStyle = '#FFF'; ctx.font = '36px Helvetica';
+        ctx.fillText(`DRIVE: ${getEl('gearFoilDrive')?.value || '-'}`, 80, 1170);
+        ctx.fillText(`FOIL: ${getEl('gearFoil')?.value || '-'}`, 80, 1220);
+        ctx.fillText(`WING: ${getEl('gearWing')?.value || '-'}`, 80, 1270);
+
+        // Update Modal
+        const imageContainer = getEl('imageContainer');
+        imageContainer.innerHTML = '';
+        const img = new Image();
+        img.src = canvas.toDataURL('image/png');
+        img.style.width = '100%'; img.style.borderRadius = '12px';
+        imageContainer.appendChild(img);
+        getEl('shareModal').style.display = 'flex';
+    });
         ctx.stroke();
 
         if (state.longestTrack.length > 0) {
