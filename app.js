@@ -171,13 +171,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const ctx = canvas.getContext('2d');
         const data = state.currentData;
         
+        // 1. Background
         ctx.fillStyle = '#0a0d14'; ctx.fillRect(0, 0, 1080, 1350);
         
+        // 2. Header
         ctx.fillStyle = '#FFF'; ctx.font = 'bold 72px Helvetica'; ctx.fillText("FOIL SESSION", 80, 120);
         ctx.fillStyle = '#888'; ctx.font = '36px Helvetica'; 
         const loc = getEl('locationInput')?.value || 'UNKNOWN';
         ctx.fillText(`${loc.toUpperCase()} • ${data.dateStr}`, 80, 180);
 
+        // 3. Map (Y range: 250 to 500)
         const minLat = Math.min(...data.lats), maxLat = Math.max(...data.lats);
         const minLon = Math.min(...data.lons), maxLon = Math.max(...data.lons);
         
@@ -201,6 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.stroke();
         }
 
+        // 4. All 8 Stats (4 rows of 2 columns)
         const drawBig = (label, val, x, y) => {
             ctx.fillStyle = '#666'; ctx.font = 'bold 24px Helvetica'; ctx.fillText(label, x, y);
             ctx.fillStyle = '#FFF'; ctx.font = 'bold 48px Helvetica'; ctx.fillText(val, x, y + 50);
@@ -208,18 +212,22 @@ document.addEventListener('DOMContentLoaded', () => {
         
         drawBig('HERO RIDE', getEl('longestWave').textContent, 80, 580);
         drawBig('FASTEST', getEl('fastestWave').textContent, 550, 580);
-        drawBig('MAX SPEED', getEl('maxSpeed').textContent, 80, 730);
-        drawBig('TOTAL DIST', getEl('totalDistance').textContent, 550, 730);
-        drawBig('SESSION', `${data.totalSessionTime} min`, 80, 880);
-        drawBig('FLIGHT', `${data.flightTime} min`, 550, 880);
+        drawBig('MAX SPEED', getEl('maxSpeed').textContent, 80, 710);
+        drawBig('TOTAL DIST', getEl('totalDistance').textContent, 550, 710);
+        drawBig('SESSION', `${data.totalSessionTime} min`, 80, 840);
+        drawBig('WAVES', getEl('waveCount').textContent, 550, 840);
+        drawBig('FLIGHT', `${data.flightTime} min`, 80, 970);
+        drawBig('MOTOR', `${data.motorTime} min`, 550, 970);
 
-        ctx.fillStyle = '#222'; ctx.fillRect(0, 1050, 1080, 300);
-        ctx.fillStyle = '#D4AF37'; ctx.font = 'bold 28px Helvetica'; ctx.fillText("SETUP", 80, 1110);
+        // 5. Gear Details (Bottom Strip)
+        ctx.fillStyle = '#222'; ctx.fillRect(0, 1080, 1080, 270);
+        ctx.fillStyle = '#D4AF37'; ctx.font = 'bold 28px Helvetica'; ctx.fillText("SETUP", 80, 1130);
         ctx.fillStyle = '#FFF'; ctx.font = '36px Helvetica';
-        ctx.fillText(`DRIVE: ${getEl('gearFoilDrive')?.value || '-'}`, 80, 1170);
-        ctx.fillText(`FOIL: ${getEl('gearFoil')?.value || '-'}`, 80, 1220);
-        ctx.fillText(`WING: ${getEl('gearWing')?.value || '-'}`, 80, 1270);
+        ctx.fillText(`DRIVE: ${getEl('gearFoilDrive')?.value || '-'}`, 80, 1180);
+        ctx.fillText(`FOIL: ${getEl('gearFoil')?.value || '-'}`, 80, 1230);
+        ctx.fillText(`WING: ${getEl('gearWing')?.value || '-'}`, 80, 1280);
 
+        // Update Modal
         const imageContainer = getEl('imageContainer');
         imageContainer.innerHTML = '';
         const img = new Image();
