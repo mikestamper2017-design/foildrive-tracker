@@ -153,7 +153,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (state.longestTrack.length > 0) L.polyline(state.longestTrack, {color: '#D4AF37', weight: 6}).addTo(state.map);
         state.map.fitBounds(L.latLngBounds(state.fullTrack));
     }
-// --- BADGE ---
+
+    // --- BADGE ---
     getEl('closeShareModal')?.addEventListener('click', () => { getEl('shareModal').style.display = 'none'; });
 
     getEl('shareBtn')?.addEventListener('click', function() {
@@ -163,14 +164,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const ctx = canvas.getContext('2d');
         const data = state.currentData;
         
-        // 1. Background
         ctx.fillStyle = '#0a0d14'; ctx.fillRect(0, 0, 1080, 1350);
         
-        // 2. Map Route (Background Layer)
         const minLat = Math.min(...data.lats), maxLat = Math.max(...data.lats);
         const minLon = Math.min(...data.lons), maxLon = Math.max(...data.lons);
         
-        // Draw full session track
         ctx.strokeStyle = '#333'; ctx.lineWidth = 4;
         ctx.beginPath();
         data.lats.forEach((lat, i) => {
@@ -180,7 +178,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         ctx.stroke();
 
-        // Draw Longest Wave (Gold Highlight)
         if (state.longestTrack.length > 0) {
             ctx.strokeStyle = '#D4AF37'; ctx.lineWidth = 8;
             ctx.beginPath();
@@ -192,11 +189,9 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.stroke();
         }
 
-        // 3. Header
         ctx.fillStyle = '#FFF'; ctx.font = 'bold 72px Helvetica'; ctx.fillText("FOIL SESSION", 80, 120);
         ctx.fillStyle = '#888'; ctx.font = '36px Helvetica'; ctx.fillText(`${data.gear.location.toUpperCase()} • ${data.dateStr}`, 80, 180);
 
-        // 4. Main Stats (Large)
         const drawBig = (label, val, x, y) => {
             ctx.fillStyle = '#666'; ctx.font = 'bold 28px Helvetica'; ctx.fillText(label, x, y);
             ctx.fillStyle = '#FFF'; ctx.font = 'bold 54px Helvetica'; ctx.fillText(val, x, y + 60);
@@ -209,41 +204,9 @@ document.addEventListener('DOMContentLoaded', () => {
         drawBig('WAVES', getEl('waveCount').textContent, 80, 750);
         drawBig('FLIGHT', `${data.flightTime} min`, 550, 750);
 
-        // 5. Gear Details (Bottom)
         ctx.fillStyle = '#444'; ctx.fillRect(0, 1000, 1080, 350);
         ctx.fillStyle = '#FFF'; ctx.font = '32px Helvetica';
-        ctx.fillText(`DRIVE: ${data.gear.drive}`, 80, 1080);
-        ctx.fillText(`FOIL: ${data.gear.foil}`, 80, 1160);
-        ctx.fillText(`WING: ${data.gear.wing}`, 80, 1240);
-
-        // Update Modal
-        const imageContainer = getEl('imageContainer');
-        imageContainer.innerHTML = '';
-        const img = new Image();
-        img.src = canvas.toDataURL('image/png');
-        img.style.width = '100%'; img.style.borderRadius = '12px';
-        imageContainer.appendChild(img);
-        getEl('shareModal').style.display = 'flex';
-    });    
-    ctx.stroke();
-
-        ctx.fillStyle = '#FFF'; ctx.font = 'bold 72px Helvetica'; ctx.fillText("FOIL SESSION", 80, 120);
-        ctx.fillStyle = '#888'; ctx.font = '36px Helvetica'; ctx.fillText(`${data.gear.location.toUpperCase()} • ${data.dateStr}`, 80, 180);
-
-        const drawMetric = (label, val, x, y, isWide = false) => {
-            ctx.fillStyle = '#666'; ctx.font = 'bold 28px Helvetica'; ctx.fillText(label, x, y);
-            ctx.fillStyle = '#FFF'; ctx.font = 'bold 54px Helvetica';
-            ctx.fillText(val, x, y + 60);
-        };
-
-        drawMetric('HERO RIDE', getEl('longestWave').textContent, 80, 350);
-        drawMetric('FASTEST', getEl('fastestWave').textContent, 550, 350);
-        drawMetric('MAX SPEED', getEl('maxSpeed').textContent, 80, 550);
-        drawMetric('TOTAL DIST', getEl('totalDistance').textContent, 550, 550);
-        drawMetric('FOIL / DRIVE', `${data.gear.foil} / ${data.gear.drive}`, 80, 750);
-        drawMetric('WING', data.gear.wing, 80, 950);
-        drawMetric('WAVES', getEl('waveCount').textContent, 80, 1150);
-        drawMetric('FLIGHT', `${data.flightTime} min`, 550, 1150);
+        ctx.fillText(`DRIVE: ${data.gear.drive}  |  FOIL: ${data.gear.foil}  |  WING: ${data.gear.wing}`, 80, 1080);
 
         const imageContainer = getEl('imageContainer');
         imageContainer.innerHTML = '';
