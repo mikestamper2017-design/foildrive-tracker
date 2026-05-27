@@ -158,25 +158,72 @@ document.addEventListener('DOMContentLoaded', () => {
     getEl('closeShareModal')?.addEventListener('click', () => { getEl('shareModal').style.display = 'none'; });
 
     getEl('shareBtn')?.addEventListener('click', function() {
-        if (!state.currentData) return;
-        const canvas = document.createElement('canvas');
-        canvas.width = 1080; canvas.height = 1350;
-        const ctx = canvas.getContext('2d');
-        const data = state.currentData;
-        
-        ctx.fillStyle = '#0a0d14'; ctx.fillRect(0, 0, 1080, 1350);
-        
-        // Watermark Route
-        ctx.strokeStyle = '#222'; ctx.lineWidth = 12;
+    if (!state.currentData) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = 1080; canvas.height = 1350;
+    const ctx = canvas.getContext('2d');
+    const data = state.currentData;
+    
+    // 1. Background
+    ctx.fillStyle = '#0a0d14'; ctx.fillRect(0, 0, 1080, 1350);
+    
+    // 2. Map Route (Background Layer)
+    const minLat = Math.min(...data.lats), maxLat = Math.max(...data.lats);
+    const minLon = Math.min(...data.lons), maxLon = Math.max(...data.lons);
+    
+    // Draw full session track
+    ctx.strokeStyle = '#333'; ctx.lineWidth = 4;
+    ctx.beginPath();
+    data.lats.forEach((lat, i) => {
+        const x = ((data.lons[i] - minLon) / (maxLon - minLon || 1)) * 800 + 140;
+        const y = 450 - ((lat - minLat) / (maxLat - minLat || 1)) * 300;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // Draw Longest Wave (Gold Highlight)
+    if (state.longestTrack.length > 0) {
+        ctx.strokeStyle = '#D4AF37'; ctx.lineWidth = 8;
         ctx.beginPath();
-        const minLat = Math.min(...data.lats), maxLat = Math.max(...data.lats);
-        const minLon = Math.min(...data.lons), maxLon = Math.max(...data.lons);
-        data.lats.forEach((lat, i) => {
-            const x = ((data.lons[i] - minLon) / (maxLon - minLon || 1)) * 800 + 140;
-            const y = 600 - ((lat - minLat) / (maxLat - minLat || 1)) * 300;
+        state.longestTrack.forEach((coord, i) => {
+            const x = ((coord[1] - minLon) / (maxLon - minLon || 1)) * 800 + 140;
+            const y = 450 - ((coord[0] - minLat) / (maxLat - minLat || 1)) * 300;
             i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
         });
         ctx.stroke();
+    }
+
+    // 3. Header
+    ctx.fillStyle = '#FFF'; ctx.font = 'bold 72px Helvetica'; ctx.fillText("FOIL SESSION", 80, 120);
+    ctx.fillStyle = '#888'; ctx.font = '36px Helvetica'; ctx.fillText(data.dateStr, 80, 180);
+
+    // 4. Main Stats (Large)
+    const drawBig = (label, val, x, y) => {
+        ctx.fillStyle = '#666'; ctx.font = 'bold 28px Helvetica'; ctx.fillText(label, x, y);
+        ctx.fillStyle = '#FFF'; ctx.font = 'bold 64px Helvetica'; ctx.fillText(val, x, y + 70);
+    };
+    drawBig('HERO RIDE', getEl('longestWave').textContent, 80, 650);
+    drawBig('FASTEST', getEl('fastestWave').textContent, 550, 650);
+    drawBig('WAVES', getEl('waveCount').textContent, 80, 850);
+    drawBig('FLIGHT', `${data.flightTime} min`, 550, 850);
+    drawBig('MAX SPEED', getEl('maxSpeed').textContent, 80, 1050);
+    drawBig('DISTANCE', getEl('totalDistance').textContent, 550, 1050);
+
+    // 5. Gear Details (Bottom)
+    ctx.fillStyle = '#444'; ctx.fillRect(0, 1200, 1080, 150);
+    ctx.fillStyle = '#FFF'; ctx.font = '28px Helvetica';
+    ctx.fillText(`${data.gear.location.toUpperCase()} | DRIVE: ${data.gear.drive} | WING: ${data.gear.wing} | FOIL: ${data.gear.foil}`, 80, 1280);
+
+    // Update Modal
+    const imageContainer = getEl('imageContainer');
+    imageContainer.innerHTML = '';
+    const img = new Image();
+    img.src = canvas.toDataURL('image/png');
+    img.style.width = '100%'; img.style.borderRadius = '12px';
+    imageContainer.appendChild(img);
+    getEl('shareModal').style.display = 'flex';
+});
+    ctx.stroke();
 
         ctx.fillStyle = '#FFF'; ctx.font = 'bold 72px Helvetica'; ctx.fillText("FOIL SESSION", 80, 120);
         ctx.fillStyle = '#888'; ctx.font = '36px Helvetica'; ctx.fillText(`${data.gear.location.toUpperCase()} • ${data.dateStr}`, 80, 180);
