@@ -78,11 +78,17 @@ document.addEventListener('DOMContentLoaded', () => {
             if (finalSpeed > 2.0) motorSec += timeDiff;
             if (finalSpeed >= 16.5) flightSec += timeDiff;
         }
+        
+        const totalSessionTime = Math.round((times[times.length - 1] - times[0]) / 60000);
+
         const data = {
             displayName: fileName.split('.')[0],
             dateStr: new Date(times[0]).toLocaleDateString('en-CA', {month:'short', day:'numeric'}),
-            flightTime: Math.round(flightSec / 60), motorTime: Math.round(motorSec / 60),
-            maxSpeed: Math.max(...calibratedSpeeds).toFixed(1), lats, lons, speeds: calibratedSpeeds, times, gear
+            flightTime: Math.round(flightSec / 60), 
+            motorTime: Math.round(motorSec / 60),
+            totalSessionTime: totalSessionTime,
+            maxSpeed: Math.max(...calibratedSpeeds).toFixed(1), 
+            lats, lons, speeds: calibratedSpeeds, times, gear
         };
         let key = `Swellpath_${Date.now()}`;
         localStorage.setItem(key, JSON.stringify(data));
@@ -131,6 +137,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.currentData = data;
         getEl('flightTime').textContent = `${data.flightTime} min`;
         getEl('motorTime').textContent = `${data.motorTime} min`;
+        getEl('sessionTime').textContent = `${data.totalSessionTime} min`; // Updated UI
         getEl('maxSpeed').textContent = `${data.maxSpeed} km/h`;
         getEl('locationInput').value = data.gear.location;
         getEl('gearFoilDrive').value = data.gear.drive;
@@ -164,16 +171,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const ctx = canvas.getContext('2d');
         const data = state.currentData;
         
-        // 1. Background
         ctx.fillStyle = '#0a0d14'; ctx.fillRect(0, 0, 1080, 1350);
         
-        // 2. Header
         ctx.fillStyle = '#FFF'; ctx.font = 'bold 72px Helvetica'; ctx.fillText("FOIL SESSION", 80, 120);
         ctx.fillStyle = '#888'; ctx.font = '36px Helvetica'; 
         const loc = getEl('locationInput')?.value || 'UNKNOWN';
         ctx.fillText(`${loc.toUpperCase()} • ${data.dateStr}`, 80, 180);
 
-        // 3. Map (Y range: 250 to 500)
         const minLat = Math.min(...data.lats), maxLat = Math.max(...data.lats);
         const minLon = Math.min(...data.lons), maxLon = Math.max(...data.lons);
         
@@ -197,20 +201,18 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.stroke();
         }
 
-        // 4. Stats (Starts at Y 600)
         const drawBig = (label, val, x, y) => {
             ctx.fillStyle = '#666'; ctx.font = 'bold 24px Helvetica'; ctx.fillText(label, x, y);
             ctx.fillStyle = '#FFF'; ctx.font = 'bold 48px Helvetica'; ctx.fillText(val, x, y + 50);
         };
         
-        drawBig('HERO RIDE', getEl('longestWave').textContent, 80, 600);
-        drawBig('FASTEST', getEl('fastestWave').textContent, 550, 600);
-        drawBig('MAX SPEED', getEl('maxSpeed').textContent, 80, 750);
-        drawBig('TOTAL DIST', getEl('totalDistance').textContent, 550, 750);
-        drawBig('WAVES', getEl('waveCount').textContent, 80, 900);
-        drawBig('FLIGHT', `${data.flightTime} min`, 550, 900);
+        drawBig('HERO RIDE', getEl('longestWave').textContent, 80, 580);
+        drawBig('FASTEST', getEl('fastestWave').textContent, 550, 580);
+        drawBig('MAX SPEED', getEl('maxSpeed').textContent, 80, 730);
+        drawBig('TOTAL DIST', getEl('totalDistance').textContent, 550, 730);
+        drawBig('SESSION', `${data.totalSessionTime} min`, 80, 880);
+        drawBig('FLIGHT', `${data.flightTime} min`, 550, 880);
 
-        // 5. Gear (Bottom at Y 1050)
         ctx.fillStyle = '#222'; ctx.fillRect(0, 1050, 1080, 300);
         ctx.fillStyle = '#D4AF37'; ctx.font = 'bold 28px Helvetica'; ctx.fillText("SETUP", 80, 1110);
         ctx.fillStyle = '#FFF'; ctx.font = '36px Helvetica';
