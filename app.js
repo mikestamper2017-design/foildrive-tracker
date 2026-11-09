@@ -203,10 +203,11 @@ document.addEventListener('DOMContentLoaded', () => {
         state.map = L.map('mapContainer').setView(state.fullTrack[0], 14);
         
         // Brighter marine tile layer
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-            maxZoom: 19
-        }).addTo(state.map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 19
+}).addTo(state.map);
+
 
         const showOnlyWaves = getEl('toggleWaveOnly')?.checked;
         
