@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     let state = {
         map: null, fullTrack: [], waveTracks: [], longestTrack: [], 
-        fastestTrack: {speed: 0}, currentData: null, lockedHeading: null
+        fastestTrack: {speed: 0}, currentData: null, outboundLeg: [], inboundLeg: []
     };
 
     function getEl(id) { return document.getElementById(id); }
@@ -15,21 +15,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
     getEl('toggleWaveOnly')?.addEventListener('change', () => { if (state.currentData) renderMap(); });
 
+    // Replaced rigid heading lock with Smart Apex Run & Direction Splitter
     getEl('lockHeadingBtn')?.addEventListener('click', () => {
-        if (state.fullTrack.length > 1) {
-            state.lockedHeading = calculateBearing(state.fullTrack[0][0], state.fullTrack[0][1], state.fullTrack[1][0], state.fullTrack[1][1]);
-            getEl('lockHeadingBtn').textContent = `Heading Locked: ${Math.round(state.lockedHeading)}°`;
-            if (state.currentData) { calculateTracks(state.currentData); renderMap(); }
+        if (state.fullTrack.length > 3 && state.currentData) {
+            processApexLegs(state.currentData);
+            renderMap();
+            getEl('lockHeadingBtn').textContent = `Apex Legs Recalculated`;
+            setTimeout(() => { getEl('lockHeadingBtn').textContent = `Auto-Detect Outbound/Inbound`; }, 2500);
         }
+    });
+
+    // Save gear changes automatically to active session
+    ['locationInput', 'gearFoilDrive', 'gearFoil', 'gearWing'].forEach(id => {
+        getEl(id)?.addEventListener('input', () => {
+            if (state.currentData) {
+                state.currentData.gear = {
+                    location: getEl('locationInput')?.value || "",
+                    drive: getEl('gearFoilDrive')?.value || "",
+                    foil: getEl('gearFoil')?.value || "",
+                    wing: getEl('gearWing')?.value || ""
+                };
+                // Update local storage in real time
+                const activeKey = getEl('savedSessions').value;
+                if (activeKey) localStorage.setItem(activeKey, JSON.stringify(state.currentData));
+            }
+        });
     });
 
     // --- FILE UPLOAD ---
     const dropZone = getEl('dropZone');
     const fileInput = getEl('fileInput');
 
-    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--accent-color)'; });
-    dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--border-color)'; });
-    dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--border-color)'; if (e.dataTransfer.files.length) handleFileUpload(e.dataTransfer.files[0]); });
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--brand-accent)'; });
+    dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--brand-primary)'; });
+    dropZone.addEventListener('drop', (e) => { 
+        e.preventDefault(); 
+        dropZone.style.borderColor = 'var(--brand-primary)'; 
+        if (e.dataTransfer.files.length) handleFileUpload(e.dataTransfer.files[0]); 
+    });
     fileInput.addEventListener('change', (e) => { if (e.target.files.length) handleFileUpload(e.target.files[0]); });
 
     function handleFileUpload(file) {
@@ -95,22 +118,40 @@ document.addEventListener('DOMContentLoaded', () => {
         return key;
     }
 
-    function calculateTracks(data) {
+    // Smart Apex-Based Run Splitting (Fixes inbound/outbound accuracy)
+    function processApexLegs(data) {
         state.fullTrack = data.lats.map((v, i) => [data.lats[i], data.lons[i]]);
         state.longestTrack = []; state.fastestTrack = {speed: 0}; state.waveTracks = [];
         let allRuns = [], currentRun = [], totalD = 0;
         
+        if (state.fullTrack.length === 0) return;
+
+        // Find distance apex (turnaround point from start)
+        const startPoint = state.fullTrack[0];
+        let maxDist = 0;
+        let apexIndex = 0;
+        state.fullTrack.forEach((pt, index) => {
+            const dist = calculateDistance(startPoint[0], startPoint[1], pt[0], pt[1]);
+            if (dist > maxDist) {
+                maxDist = dist;
+                apexIndex = index;
+            }
+        });
+
+        // Separate outbound and inbound arrays
+        state.outboundLeg = state.fullTrack.slice(0, apexIndex + 1);
+        state.inboundLeg = state.fullTrack.slice(apexIndex);
+
         for (let i = 1; i < state.fullTrack.length; i++) {
             totalD += calculateDistance(state.fullTrack[i-1][0], state.fullTrack[i-1][1], state.fullTrack[i][0], state.fullTrack[i][1]);
-            let bearing = calculateBearing(state.fullTrack[i-1][0], state.fullTrack[i-1][1], state.fullTrack[i][0], state.fullTrack[i][1]);
-            let headingValid = (state.lockedHeading === null || Math.abs(bearing - state.lockedHeading) < 45);
 
-            if (data.speeds[i] >= 16.5 && headingValid) {
+            if (data.speeds[i] >= 16.5) {
                 currentRun.push({coord: state.fullTrack[i], speed: data.speeds[i]});
             } else if (currentRun.length >= 6) {
                 allRuns.push(currentRun); currentRun = [];
             }
         }
+        if (currentRun.length >= 6) allRuns.push(currentRun);
         
         let longestM = 0;
         allRuns.forEach(run => {
@@ -137,14 +178,20 @@ document.addEventListener('DOMContentLoaded', () => {
         state.currentData = data;
         getEl('flightTime').textContent = `${data.flightTime} min`;
         getEl('motorTime').textContent = `${data.motorTime} min`;
-        getEl('sessionTime').textContent = `${data.totalSessionTime} min`; // Updated UI
+        getEl('sessionTime').textContent = `${data.totalSessionTime} min`;
         getEl('maxSpeed').textContent = `${data.maxSpeed} km/h`;
-        getEl('locationInput').value = data.gear.location;
-        getEl('gearFoilDrive').value = data.gear.drive;
-        getEl('gearFoil').value = data.gear.foil;
-        getEl('gearWing').value = data.gear.wing;
-        calculateTracks(data);
+        
+        // Populate gear inputs
+        if (data.gear) {
+            getEl('locationInput').value = data.gear.location || '';
+            getEl('gearFoilDrive').value = data.gear.drive || '';
+            getEl('gearFoil').value = data.gear.foil || '';
+            getEl('gearWing').value = data.gear.wing || '';
+        }
+
+        processApexLegs(data);
         renderMap();
+        
         const d = getEl('dashboard');
         d.classList.remove('dashboard-hidden');
         d.style.display = 'grid';
@@ -154,14 +201,30 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!state.fullTrack.length) return;
         if (state.map) state.map.remove();
         state.map = L.map('mapContainer').setView(state.fullTrack[0], 14);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(state.map);
+        
+        // Brighter marine tile layer
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+            maxZoom: 19
+        }).addTo(state.map);
+
         const showOnlyWaves = getEl('toggleWaveOnly')?.checked;
-        L.polyline(showOnlyWaves ? state.waveTracks : state.fullTrack, {color: '#A0A0A0', weight: 2}).addTo(state.map);
-        if (state.longestTrack.length > 0) L.polyline(state.longestTrack, {color: '#D4AF37', weight: 6}).addTo(state.map);
+        
+        if (!showOnlyWaves) {
+            // Render distinguished outbound vs inbound legs if desired, or full track
+            L.polyline(state.outboundLeg, {color: '#0284c7', weight: 3, opacity: 0.6}).addTo(state.map);
+            L.polyline(state.inboundLeg, {color: '#06b6d4', weight: 3, opacity: 0.6}).addTo(state.map);
+        }
+
+        L.polyline(state.waveTracks, {color: '#0284c7', weight: 4, opacity: 0.8}).addTo(state.map);
+        if (state.longestTrack.length > 0) {
+            L.polyline(state.longestTrack, {color: '#d97706', weight: 6, opacity: 1}).addTo(state.map);
+        }
+        
         state.map.fitBounds(L.latLngBounds(state.fullTrack));
     }
 
-    // --- BADGE ---
+    // --- BADGE (Bright Marine Theme) ---
     getEl('closeShareModal')?.addEventListener('click', () => { getEl('shareModal').style.display = 'none'; });
 
     getEl('shareBtn')?.addEventListener('click', function() {
@@ -171,63 +234,71 @@ document.addEventListener('DOMContentLoaded', () => {
         const ctx = canvas.getContext('2d');
         const data = state.currentData;
         
-        // 1. Background
-        ctx.fillStyle = '#0a0d14'; ctx.fillRect(0, 0, 1080, 1350);
+        // 1. Clean Brighter Background
+        ctx.fillStyle = '#f8fafc'; ctx.fillRect(0, 0, 1080, 1350);
         
         // 2. Header
-        ctx.fillStyle = '#FFF'; ctx.font = 'bold 72px Helvetica'; ctx.fillText("FOIL SESSION", 80, 120);
-        ctx.fillStyle = '#888'; ctx.font = '36px Helvetica'; 
-        const loc = getEl('locationInput')?.value || 'UNKNOWN';
+        ctx.fillStyle = '#0f172a'; ctx.font = 'bold 72px -apple-system, sans-serif'; ctx.fillText("SWELLPATH", 80, 120);
+        ctx.fillStyle = '#64748b'; ctx.font = 'bold 32px -apple-system, sans-serif'; 
+        const loc = getEl('locationInput')?.value || 'LOCAL SESSION';
         ctx.fillText(`${loc.toUpperCase()} • ${data.dateStr}`, 80, 180);
 
-        // 3. Map (Y range: 250 to 500)
+        // 3. Map Schematic Box
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(80, 220, 920, 320);
+        ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 2; ctx.strokeRect(80, 220, 920, 320);
+
         const minLat = Math.min(...data.lats), maxLat = Math.max(...data.lats);
         const minLon = Math.min(...data.lons), maxLon = Math.max(...data.lons);
         
-        ctx.strokeStyle = '#333'; ctx.lineWidth = 4;
+        ctx.strokeStyle = '#cbd5e1'; ctx.lineWidth = 3;
         ctx.beginPath();
         data.lats.forEach((lat, i) => {
             const x = ((data.lons[i] - minLon) / (maxLon - minLon || 1)) * 800 + 140;
-            const y = 480 - ((lat - minLat) / (maxLat - minLat || 1)) * 200;
+            const y = 500 - ((lat - minLat) / (maxLat - minLat || 1)) * 240;
             i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
         });
         ctx.stroke();
 
         if (state.longestTrack.length > 0) {
-            ctx.strokeStyle = '#D4AF37'; ctx.lineWidth = 8;
+            ctx.strokeStyle = '#0284c7'; ctx.lineWidth = 7;
             ctx.beginPath();
             state.longestTrack.forEach((coord, i) => {
                 const x = ((coord[1] - minLon) / (maxLon - minLon || 1)) * 800 + 140;
-                const y = 480 - ((coord[0] - minLat) / (maxLat - minLat || 1)) * 200;
+                const y = 500 - ((coord[0] - minLat) / (maxLat - minLat || 1)) * 240;
                 i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
             });
             ctx.stroke();
         }
 
-        // 4. All 8 Stats (4 rows of 2 columns)
-        const drawBig = (label, val, x, y) => {
-            ctx.fillStyle = '#666'; ctx.font = 'bold 24px Helvetica'; ctx.fillText(label, x, y);
-            ctx.fillStyle = '#FFF'; ctx.font = 'bold 48px Helvetica'; ctx.fillText(val, x, y + 50);
+        // 4. Stats Grid (Bright Card Backgrounds)
+        const drawStatCard = (label, val, x, y) => {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(x, y, 440, 110);
+            ctx.strokeStyle = '#e2e8f0'; ctx.lineWidth = 2; ctx.strokeRect(x, y, 440, 110);
+
+            ctx.fillStyle = '#64748b'; ctx.font = 'bold 20px -apple-system, sans-serif'; ctx.fillText(label, x + 24, y + 36);
+            ctx.fillStyle = '#0f172a'; ctx.font = 'bold 42px -apple-system, sans-serif'; ctx.fillText(val, x + 24, y + 86);
         };
         
-        drawBig('HERO RIDE', getEl('longestWave').textContent, 80, 580);
-        drawBig('FASTEST', getEl('fastestWave').textContent, 550, 580);
-        drawBig('MAX SPEED', getEl('maxSpeed').textContent, 80, 710);
-        drawBig('TOTAL DIST', getEl('totalDistance').textContent, 550, 710);
-        drawBig('SESSION', `${data.totalSessionTime} min`, 80, 840);
-        drawBig('WAVES', getEl('waveCount').textContent, 550, 840);
-        drawBig('FLIGHT', `${data.flightTime} min`, 80, 970);
-        drawBig('MOTOR', `${data.motorTime} min`, 550, 970);
+        drawStatCard('LONGEST WAVE', getEl('longestWave').textContent, 80, 580);
+        drawStatCard('FASTEST WAVE', getEl('fastestWave').textContent, 560, 580);
+        drawStatCard('MAX SPEED', getEl('maxSpeed').textContent, 80, 710);
+        drawStatCard('TOTAL DISTANCE', getEl('totalDistance').textContent, 560, 710);
+        drawStatCard('SESSION TIME', `${data.totalSessionTime} min`, 80, 840);
+        drawStatCard('WAVE COUNT', getEl('waveCount').textContent, 560, 840);
+        drawStatCard('FLIGHT TIME', `${data.flightTime} min`, 80, 970);
+        drawStatCard('MOTOR TIME', `${data.motorTime} min`, 560, 970);
 
-        // 5. Gear Details (Bottom Strip)
-        ctx.fillStyle = '#222'; ctx.fillRect(0, 1080, 1080, 270);
-        ctx.fillStyle = '#D4AF37'; ctx.font = 'bold 28px Helvetica'; ctx.fillText("SETUP", 80, 1130);
-        ctx.fillStyle = '#FFF'; ctx.font = '36px Helvetica';
-        ctx.fillText(`DRIVE: ${getEl('gearFoilDrive')?.value || '-'}`, 80, 1180);
-        ctx.fillText(`FOIL: ${getEl('gearFoil')?.value || '-'}`, 80, 1230);
-        ctx.fillText(`WING: ${getEl('gearWing')?.value || '-'}`, 80, 1280);
+        // 5. Gear Details Strip (Bottom)
+        ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 1110, 1080, 240);
+        ctx.fillStyle = '#06b6d4'; ctx.font = 'bold 24px -apple-system, sans-serif'; ctx.fillText("GEAR & SETUP", 80, 1160);
+        ctx.fillStyle = '#ffffff'; ctx.font = '28px -apple-system, sans-serif';
+        ctx.fillText(`Drive: ${getEl('gearFoilDrive')?.value || 'None'}`, 80, 1210);
+        ctx.fillText(`Foil: ${getEl('gearFoil')?.value || 'Standard'}`, 80, 1255);
+        ctx.fillText(`Wing: ${getEl('gearWing')?.value || 'Standard'}`, 80, 1300);
 
-        // Update Modal
+        // Update Modal Preview
         const imageContainer = getEl('imageContainer');
         imageContainer.innerHTML = '';
         const img = new Image();
@@ -245,12 +316,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     }
 
-    function calculateBearing(lat1, lon1, lat2, lon2) {
-        const y = Math.sin((lon2-lon1)*Math.PI/180) * Math.cos(lat2*Math.PI/180);
-        const x = Math.cos(lat1*Math.PI/180)*Math.sin(lat2*Math.PI/180) - Math.sin(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.cos((lon2-lon1)*Math.PI/180);
-        return (Math.atan2(y, x) * 180/Math.PI + 360) % 360;
-    }
-
     function populateSavedSessions() {
         const sel = getEl('savedSessions');
         if (!sel) return;
@@ -258,7 +323,8 @@ document.addEventListener('DOMContentLoaded', () => {
         Object.keys(localStorage).filter(k => k.startsWith('Swellpath_')).forEach(k => {
             let opt = document.createElement('option');
             opt.value = k;
-            opt.textContent = k.replace('Swellpath_', ''); 
+            let rawData = JSON.parse(localStorage.getItem(k));
+            opt.textContent = `${rawData.displayName || k.replace('Swellpath_', '')} (${rawData.dateStr || ''})`; 
             sel.appendChild(opt);
         });
     }
