@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Swellpath | Precision Session Analytics</title>
+    <title>Swellpath | Precision Hydrofoil Telemetry</title>
     
     <meta property="og:title" content="Swellpath | Precision Session Analytics">
-    <meta property="og:description" content="Review, map, and analyze your unassisted foil sessions.">
+    <meta property="og:description" content="Review, map, and analyze your hydrofoil sessions.">
     <meta property="og:image" content="https://swellpath.app/assets/swellpath-og-image.png">
     <meta property="og:url" content="https://swellpath.app">
     
@@ -16,7 +16,312 @@
     <link rel="manifest" href="./site.webmanifest">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="app.css">
+    <style>
+        :root {
+            --bg-page: #f8fafc;
+            --surface-card: #ffffff;
+            --surface-card-alt: #f1f5f9;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --brand-primary: #0284c7;
+            --brand-accent: #06b6d4;
+            --border-light: #e2e8f0;
+            --shadow-subtle: 0 4px 14px 0 rgba(15, 23, 42, 0.05);
+        }
+
+        body {
+            background-color: var(--bg-page);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            margin: 0;
+            padding: 0;
+            line-height: 1.5;
+        }
+
+        .app-header {
+            background: #ffffff;
+            border-bottom: 1px solid var(--border-light);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: var(--shadow-subtle);
+        }
+
+        .brand-logo {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+        }
+
+        .header-title-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo {
+            font-size: 1.35rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: var(--brand-primary);
+        }
+
+        .subtitle {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .container {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .instructions-panel {
+            background: var(--surface-card);
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: var(--shadow-subtle);
+        }
+
+        .instructions-panel h3 {
+            margin-top: 0;
+            margin-bottom: 12px;
+            font-size: 1rem;
+            color: var(--text-primary);
+        }
+
+        .instructions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+        }
+
+        .instructions-step strong {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--brand-primary);
+            margin-bottom: 4px;
+        }
+
+        .instructions-step span {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        /* Improved Drop Zone for seamless file imports */
+        .drop-zone {
+            background: #ffffff;
+            border: 2px dashed var(--brand-primary);
+            border-radius: 14px;
+            padding: 32px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            box-shadow: var(--shadow-subtle);
+        }
+
+        .drop-zone:hover, .drop-zone.drag-over {
+            background: rgba(2, 132, 199, 0.04);
+            border-color: var(--brand-accent);
+            transform: translateY(-1px);
+        }
+
+        .drop-zone-text {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .desktop-text {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--brand-primary);
+        }
+
+        .drop-hint {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .saved-panel {
+            background: var(--surface-card);
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: var(--shadow-subtle);
+        }
+
+        .saved-panel label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .saved-panel select {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            background: #fff;
+            color: var(--text-primary);
+            font-size: 0.85rem;
+        }
+
+        /* Dashboard Metric Cards Refresh */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 12px;
+        }
+
+        .dashboard-hidden {
+            display: none;
+        }
+
+        .metric-card {
+            background: var(--surface-card);
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-subtle);
+        }
+
+        .metric-card .label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .metric-card .value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .longest-wave-card, .fastest-wave-card {
+            border-left: 4px solid var(--brand-accent);
+        }
+
+        .gear-panel {
+            background: var(--surface-card);
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            padding: 18px 20px;
+            box-shadow: var(--shadow-subtle);
+        }
+
+        .gear-panel h4 {
+            margin-top: 0;
+            margin-bottom: 12px;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .gear-form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+
+        .gear-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .gear-input-group label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .gear-input-group input {
+            padding: 8px 12px;
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+        }
+
+        .controls-wrapper {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .action-btn {
+            background: var(--brand-primary);
+            color: #ffffff;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        .action-btn:hover {
+            background: #0369a1;
+        }
+
+        .button-stack {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .map-container {
+            width: 100%;
+            height: 480px;
+            border-radius: 14px;
+            border: 1px solid var(--border-light);
+            overflow: hidden;
+            box-shadow: var(--shadow-subtle);
+        }
+
+        .share-modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .share-modal-card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 420px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+        }
+    </style>
 </head>
 <body>
 
@@ -24,8 +329,10 @@
         <div class="logo-container">
             <img src="./assets/apple-touch-icon.png" alt="Swellpath Logo" class="brand-logo">
         </div>
-        <div class="logo">Swellpath</div>
-        <div class="subtitle">Precision Unassisted Wave Tracking</div>
+        <div class="header-title-group">
+            <div class="logo">Swellpath</div>
+            <div class="subtitle">Precision Hydrofoil Telemetry</div>
+        </div>
     </header>
 
     <main class="container">
@@ -34,27 +341,27 @@
             <h3>Import Your Session in Seconds</h3>
             <div class="instructions-grid">
                 <div class="instructions-step">
-                    <strong>1. Export from Strava</strong>
-                    <span>Open your surf activity on Strava, click the three dots, and select "Export GPX".</span>
+                    <strong>1. Export from Strava / Garmin</strong>
+                    <span>Open your session on Strava or Garmin Connect and export the .GPX or .TCX file.</span>
                 </div>
                 <div class="instructions-step">
-                    <strong>2. Save to your device</strong>
-                    <span>Save the file directly to your device storage or files directory.</span>
+                    <strong>2. Drag & Drop or Select</strong>
+                    <span>Drag your file directly onto the upload card below or tap to select from files.</span>
                 </div>
                 <div class="instructions-step">
-                    <strong>3. Upload to Swellpath</strong>
-                    <span>Tap or drop the file into the box below to instantly calculate your session metrics.</span>
+                    <strong>3. Instant Run Analysis</strong>
+                    <span>Swellpath immediately parses wave counts, max speeds, glides, and leg directions.</span>
                 </div>
             </div>
         </div>
 
-        <div id="dropZone" class="drop-zone" onclick="document.getElementById('fileInput').click()">
-    <span class="drop-zone-text">
-        <span class="desktop-text">Drop your .tcx or .gpx file here</span>
-        <span class="mobile-text">Tap to Upload File</span>
-    </span>
-    <input type="file" id="fileInput" accept=".tcx,.gpx,.TCX,.GPX" style="display:none">
-</div>
+        <div id="dropZone" class="drop-zone">
+            <div class="drop-zone-text">
+                <span class="desktop-text">Drag & Drop .GPX or .TCX file here</span>
+                <span class="drop-hint">or tap to select from device files</span>
+            </div>
+            <input type="file" id="fileInput" accept=".tcx,.gpx,.TCX,.GPX" style="display:none">
+        </div>
 
         <div class="saved-panel">
             <label for="savedSessions">Saved Sessions</label>
@@ -65,15 +372,15 @@
         </div>
 
         <div id="dashboard" class="dashboard dashboard-hidden">
-    <div class="metric-card"><span class="label">Total Session</span><span id="sessionTime" class="value">-</span></div>
-    <div class="metric-card"><span class="label">Flight Time</span><span id="flightTime" class="value">-</span></div>
-    <div class="metric-card"><span class="label">Motor Assist</span><span id="motorTime" class="value">-</span></div>
-    <div class="metric-card"><span class="label">Max Speed</span><span id="maxSpeed" class="value">-</span></div>
-    <div class="metric-card"><span class="label">Wave Count</span><span id="waveCount" class="value">-</span></div>
-    <div class="metric-card longest-wave-card"><span class="label">Longest Wave</span><span id="longestWave" class="value">-</span></div>
-    <div class="metric-card fastest-wave-card"><span class="label">Fastest Wave</span><span id="fastestWave" class="value">-</span></div>
-    <div class="metric-card"><span class="label">Total Distance</span><span id="totalDistance" class="value">-</span></div>
-</div>
+            <div class="metric-card"><span class="label">Total Session</span><span id="sessionTime" class="value">-</span></div>
+            <div class="metric-card"><span class="label">Flight Time</span><span id="flightTime" class="value">-</span></div>
+            <div class="metric-card"><span class="label">Motor Assist</span><span id="motorTime" class="value">-</span></div>
+            <div class="metric-card"><span class="label">Max Speed</span><span id="maxSpeed" class="value">-</span></div>
+            <div class="metric-card"><span class="label">Wave Count</span><span id="waveCount" class="value">-</span></div>
+            <div class="metric-card longest-wave-card"><span class="label">Longest Wave</span><span id="longestWave" class="value">-</span></div>
+            <div class="metric-card fastest-wave-card"><span class="label">Fastest Wave</span><span id="fastestWave" class="value">-</span></div>
+            <div class="metric-card"><span class="label">Total Distance</span><span id="totalDistance" class="value">-</span></div>
+        </div>
 
         <div class="gear-panel">
             <h4>Session Details</h4>
@@ -105,7 +412,7 @@
             </label>
 
             <div class="button-stack">
-                <button id="lockHeadingBtn" class="action-btn">Lock Outbound Heading</button>
+                <button id="lockHeadingBtn" class="action-btn">Auto-Detect Outbound/Inbound</button>
                 <button id="shareBtn" class="action-btn">Generate Session Badge</button>
             </div>
         </div>
@@ -123,6 +430,31 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Drag-and-Drop Handler initialization for seamless ingest
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
+    </script>
     <script src="app.js"></script>
 </body>
 </html>
